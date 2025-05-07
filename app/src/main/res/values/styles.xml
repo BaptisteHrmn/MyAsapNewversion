@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <!-- Thème principal de l’application MyAsap -->
-    <style name="Theme.MyAsapNewversion" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+    <!-- Thème principal sans ActionBar (pour utiliser un Toolbar custom) -->
+    <style name="Theme.MyAsapNewversion" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Désactive l’ActionBar native -->
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+
         <!-- Couleur primaire (Bleu MyAsap #297988) -->
         <item name="colorPrimary">@color/myasap_blue</item>
         <item name="colorPrimaryVariant">@color/myasap_blue</item>
@@ -11,12 +15,12 @@
         <!-- Couleur d’arrière-plan générale -->
         <item name="android:windowBackground">@color/white</item>
 
-        <!-- Couleur de la barre de statut et de navigation -->
+        <!-- Couleur barre de statut et navigation -->
         <item name="android:statusBarColor">@color/myasap_blue</item>
         <item name="android:navigationBarColor">@color/white</item>
     </style>
 
-    <!-- Style par défaut pour les composants Material -->
+    <!-- Alias pour compatibilité -->
     <style name="AppTheme" parent="Theme.MyAsapNewversion"/>
 
 </resources>

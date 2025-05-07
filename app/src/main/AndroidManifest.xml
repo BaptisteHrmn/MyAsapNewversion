@@ -20,6 +20,9 @@
     <uses-permission android:name="android.permission.CALL_PHONE"/>
     <uses-permission android:name="android.permission.INTERNET"/>
 
+    <!-- Permission pour démarrer un service en foreground (Android 9+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+
     <!-- Déclaration que l’app nécessite le BLE -->
     <uses-feature
         android:name="android.hardware.bluetooth_le"
@@ -33,7 +36,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyAsapNewversion">
 
-        <!-- Activité principale hébergeant le NavController -->
+        <!-- Activité principale -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
