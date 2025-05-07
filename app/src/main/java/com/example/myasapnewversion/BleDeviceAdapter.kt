@@ -17,11 +17,11 @@ class BleDeviceAdapter(
 ) : RecyclerView.Adapter<BleDeviceAdapter.ViewHolder>() {
 
     inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val nameTv: TextView = view.findViewById(R.id.tv_device_name)
-        val rssiTv: TextView = view.findViewById(R.id.tv_device_rssi)
-        val battTv: TextView = view.findViewById(R.id.tv_device_battery)
-        val ivAuto: ImageView = view.findViewById(R.id.iv_auto_connect)
-        val ivConn: ImageView = view.findViewById(R.id.iv_connected)
+        val nameTv: TextView   = view.findViewById(R.id.text_name)
+        val rssiTv: TextView   = view.findViewById(R.id.text_rssi)
+        val battTv: TextView   = view.findViewById(R.id.text_battery)
+        val ivAuto: ImageView  = view.findViewById(R.id.iv_auto_connect)
+        val ivConn: ImageView  = view.findViewById(R.id.iv_connected)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -32,19 +32,23 @@ class BleDeviceAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val dev = devices[position]
+
+        // Texte
         holder.nameTv.text = dev.name
         holder.rssiTv.text = "${dev.rssi} dBm"
-        holder.battTv.text = if (dev.batteryLevel >= 0) "${dev.batteryLevel} %" else "–"
-        holder.ivAuto.setImageResource(
-            if (dev.isAutoConnected) R.drawable.ic_auto_connect else R.drawable.ic_auto_connect_off
-        )
-        holder.ivConn.setImageResource(
-            if (dev.isConnected) R.drawable.ic_connected else R.drawable.ic_disconnected
-        )
+        holder.battTv.text = dev.battery?.let { "$it %" } ?: "–"
+
+        // Icônes : on affiche ou cache selon l’état, sans utiliser de drawables manquants
+        holder.ivAuto.visibility = if (dev.auto) View.VISIBLE else View.GONE
+        holder.ivConn.visibility = if (dev.connected) View.VISIBLE else View.GONE
+
+        // Clic standard
         holder.itemView.setOnClickListener { onClick(dev) }
+
+        // Clic long : lance le service de (dé)connexion auto
         holder.itemView.setOnLongClickListener {
             val intent = Intent(context, BleAutoConnectService::class.java).apply {
-                action = if (dev.isConnected)
+                action = if (dev.connected)
                     BleAutoConnectService.ACTION_DISCONNECT
                 else
                     BleAutoConnectService.ACTION_CONNECT
