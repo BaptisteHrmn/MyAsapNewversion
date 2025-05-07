@@ -41,11 +41,7 @@ class BleDeviceAdapter(
         holder.ivConn.setImageResource(
             if (dev.isConnected) R.drawable.ic_connected else R.drawable.ic_disconnected
         )
-
-        holder.itemView.setOnClickListener {
-            onClick(dev)
-        }
-
+        holder.itemView.setOnClickListener { onClick(dev) }
         holder.itemView.setOnLongClickListener {
             val intent = Intent(context, BleAutoConnectService::class.java).apply {
                 action = if (dev.isConnected)
