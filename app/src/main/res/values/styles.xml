@@ -1,0 +1,22 @@
+<resources>
+
+    <!-- Thème principal harmonisé -->
+    <style name="Theme.MyAsap" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Couleurs principales -->
+        <item name="colorPrimary">@color/primaryColor</item>
+        <item name="colorPrimaryVariant">@color/primaryDarkColor</item>
+        <item name="colorOnPrimary">@color/white</item>
+
+        <!-- Accent -->
+        <item name="colorSecondary">@color/accentColor</item>
+        <item name="colorOnSecondary">@color/black</item>
+
+        <!-- Fond global -->
+        <item name="android:windowBackground">@color/white</item>
+
+        <!-- Configuration barre d'action -->
+        <item name="actionBarTheme">@style/ThemeOverlay.MaterialComponents.Dark.ActionBar</item>
+        <item name="android:textColorPrimary">@color/black</item>
+    </style>
+
+</resources>

@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">MyAsapNewVersion</string>
+    <string name="auto_connect">Auto-connecté</string>
+    <string name="connected">Connecté</string>
+    <string name="disconnected">Déconnecté</string>
+
+    <!-- Pour AccessoryDetailActivity -->
+    <string name="device_name_label">Nom de l’appareil détecté</string>
+    <string name="device_name_hint">Entrez un nom personnalisé</string>
+    <string name="auto_connect_label">Connexion automatique</string>
+    <string name="battery_level_unknown">Batterie actuelle : Inconnue</string>
+    <string name="battery_level">Batterie actuelle : %1$d%%</string>
+    <string name="save_button">Enregistrer</string>
+    <string name="forget_button">Oublier l’appareil</string>
+</resources>

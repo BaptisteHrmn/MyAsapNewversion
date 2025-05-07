@@ -1,0 +1,12 @@
+<resources>
+    <!-- Couleur principale (bleu) -->
+    <color name="primaryColor">#297988</color>
+    <color name="primaryDarkColor">#1f5d6c</color>
+    <color name="accentColor">#4FB0C6</color>
+
+    <!-- Couleurs secondaires -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="grayLight">#F0F0F0</color>
+    <color name="grayDark">#222222</color>
+</resources>

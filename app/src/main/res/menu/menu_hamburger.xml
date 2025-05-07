@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_account"
+        android:title="Mon compte" />
+    <item
+        android:id="@+id/nav_faq"
+        android:title="FAQ" />
+    <item
+        android:id="@+id/nav_community"
+        android:title="Communauté" />
+    <item
+        android:id="@+id/nav_settings"
+        android:title="Paramètres" />
+</menu>

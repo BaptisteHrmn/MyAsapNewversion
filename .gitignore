@@ -1,0 +1,7 @@
+# Fichiers Android/IDE à ignorer
+.gradle/
+/build/
+**/build/
+/local.properties
+/.idea/
+*.iml
