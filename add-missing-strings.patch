@@ -1,0 +1,9 @@
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index abcdef0..1234567 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@
+     <string name="save_button">Enregistrer</string>
++    <string name="device_name_hint">Entrez un nom personnalisé</string>
++    <string name="auto_connect_label">Connexion automatique</string>
++    <string name="forget_button">Oublier l’appareil</string>

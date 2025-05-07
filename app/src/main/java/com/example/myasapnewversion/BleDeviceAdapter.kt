@@ -12,13 +12,12 @@ class BleDeviceAdapter(
     private val clickListener: (BleDevice) -> Unit
 ) : RecyclerView.Adapter<BleDeviceAdapter.ViewHolder>() {
 
-    class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val nameText: TextView = itemView.findViewById(R.id.tv_device_name)
-        val macText: TextView = itemView.findViewById(R.id.tv_device_mac)
-        val rssiText: TextView = itemView.findViewById(R.id.tv_device_rssi)
-        val batteryText: TextView = itemView.findViewById(R.id.tv_device_battery)
-        val connectedIcon: ImageView = itemView.findViewById(R.id.iv_connected)
-        val autoConnectIcon: ImageView = itemView.findViewById(R.id.iv_auto_connect)
+    inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val nameText: TextView      = itemView.findViewById(R.id.tv_device_name)
+        val rssiText: TextView      = itemView.findViewById(R.id.tv_device_rssi)
+        val batteryText: TextView   = itemView.findViewById(R.id.tv_device_battery)
+        val ivConnected: ImageView  = itemView.findViewById(R.id.iv_connected)
+        val ivAutoConnect: ImageView= itemView.findViewById(R.id.iv_auto_connect)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -31,12 +30,19 @@ class BleDeviceAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val device = devices[position]
-        holder.nameText.text = device.name
-        holder.macText.text = device.mac
-        holder.rssiText.text = "${device.rssi} dBm"
+
+        // Nom et RSSI
+        holder.nameText.text   = device.name
+        holder.rssiText.text   = "${device.rssi} dBm"
+
+        // Batterie (nullable)
         holder.batteryText.text = device.battery?.let { "$it %" } ?: "?"
-        holder.connectedIcon.visibility = if (device.connected) View.VISIBLE else View.GONE
-        holder.autoConnectIcon.visibility = if (device.auto) View.VISIBLE else View.GONE
+
+        // Icônes de statut
+        holder.ivConnected.visibility   = if (device.connected) View.VISIBLE else View.GONE
+        holder.ivAutoConnect.visibility = if (device.auto) View.VISIBLE else View.GONE
+
+        // Clic sur la ligne
         holder.itemView.setOnClickListener { clickListener(device) }
     }
 }
