@@ -6,63 +6,74 @@
     android:layout_height="wrap_content"
     android:padding="12dp">
 
+    <!-- Nom de l'appareil -->
     <TextView
-        android:id="@+id/tv_device_name"
+        android:id="@+id/text_name"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="Nom de l'appareil"
+        android:text="Nom appareil"
         android:textStyle="bold"
         android:textSize="16sp"
-        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/iv_connected"/>
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/iv_auto_connect"
+        app:layout_constraintHorizontal_bias="0"/>
 
+    <!-- Icône « connecté » -->
     <ImageView
         android:id="@+id/iv_connected"
         android:layout_width="24dp"
         android:layout_height="24dp"
         android:src="@drawable/ic_connected"
-        android:contentDescription="Connecté"
+        android:contentDescription="@string/connected"
         android:visibility="gone"
-        app:layout_constraintTop_toTopOf="@id/tv_device_name"
-        app:layout_constraintEnd_toStartOf="@id/iv_auto_connect"
-        android:layout_marginEnd="4dp"/>
+        app:layout_constraintStart_toEndOf="@id/text_name"
+        app:layout_constraintTop_toTopOf="@id/text_name"
+        android:layout_marginStart="4dp"/>
 
+    <!-- Icône « auto-connexion » -->
     <ImageView
         android:id="@+id/iv_auto_connect"
         android:layout_width="24dp"
         android:layout_height="24dp"
         android:src="@drawable/ic_auto_connect"
-        android:contentDescription="Auto-connecté"
+        android:contentDescription="@string/auto_connect"
         android:visibility="gone"
-        app:layout_constraintTop_toTopOf="@id/tv_device_name"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/text_name"/>
 
+    <!-- Adresse MAC -->
     <TextView
-        android:id="@+id/tv_device_mac"
+        android:id="@+id/text_mac"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="AA:BB:CC:DD:EE:FF"
         android:textSize="13sp"
-        app:layout_constraintTop_toBottomOf="@id/tv_device_name"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintTop_toBottomOf="@id/text_name"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="4dp"/>
 
+    <!-- RSSI -->
     <TextView
-        android:id="@+id/tv_device_rssi"
+        android:id="@+id/text_rssi"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="-55 dBm"
         android:textSize="13sp"
-        app:layout_constraintTop_toBottomOf="@id/tv_device_mac"
-        app:layout_constraintStart_toStartOf="parent"/>
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/text_mac"
+        android:layout_marginTop="4dp"/>
 
+    <!-- Batterie -->
     <TextView
-        android:id="@+id/tv_device_battery"
+        android:id="@+id/text_battery"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="85 %"
         android:textSize="13sp"
-        app:layout_constraintTop_toBottomOf="@id/tv_device_mac"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/text_mac"
+        android:layout_marginTop="4dp"/>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

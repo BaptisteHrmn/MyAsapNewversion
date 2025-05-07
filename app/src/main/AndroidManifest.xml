@@ -9,33 +9,22 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.PROCESS_OUTGOING_CALLS" />
 
-    <!-- Bluetooth classique (API <31) -->
+    <!-- Permissions Bluetooth -->
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-
-    <!-- Bluetooth LE (API 31+) -->
-    <uses-permission
-        android:name="android.permission.BLUETOOTH_SCAN"
-        android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission
-        android:name="android.permission.BLUETOOTH_ADVERTISE"
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
         android:usesPermissionFlags="neverForLocation" />
-
-    <!-- Localisation pour le scan BLE sur API <31 -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-
-    <!-- Pour démarrer un service en premier plan -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
         android:allowBackup="true"
+        android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.MyAsap">
 
         <!-- SplashActivity -->
@@ -53,7 +42,7 @@
             android:name=".MainActivity"
             android:exported="false" />
 
-        <!-- Détail d’un accessoire BLE -->
+        <!-- Fiche accessoire -->
         <activity
             android:name=".AccessoryDetailActivity"
             android:exported="false" />
@@ -77,11 +66,10 @@
             </intent-filter>
         </receiver>
 
-        <!-- Service BLE en foreground pour auto-connexion -->
+        <!-- Service BLE -->
         <service
             android:name=".BleAutoConnectService"
             android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="connectedDevice|location" />
+            android:exported="false" />
     </application>
 </manifest>

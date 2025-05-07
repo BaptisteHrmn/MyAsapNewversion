@@ -1,8 +1,5 @@
-@file:Suppress("NotifyDataSetChanged")
-
 package com.example.myasapnewversion
 
-import android.annotation.SuppressLint
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
@@ -31,7 +28,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-@SuppressLint("MissingPermission")
 class AccessoryFragment : Fragment() {
 
     private lateinit var bluetoothAdapter: BluetoothAdapter
@@ -53,23 +49,33 @@ class AccessoryFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
-        val recycler = view.findViewById<RecyclerView>(R.id.recycler_devices)
+        super.onViewCreated(view, savedInstanceState)
 
-        adapter = BleDeviceAdapter(scanResults) { device ->
+        // RecyclerView
+        val recycler = view.findViewById<RecyclerView>(R.id.recycler_devices)
+        recycler.layoutManager = LinearLayoutManager(requireContext())
+
+        // Instanciation de l'adaptateur AVEC le Context en premier
+        adapter = BleDeviceAdapter(
+            requireContext(),
+            scanResults
+        ) { device ->
             val intent = Intent(requireContext(), AccessoryDetailActivity::class.java)
             intent.putExtra("device_mac", device.mac)
-            intent.putExtra("device_name", device.name)
+            intent.putExtra("device_name", device.baseName)
             startActivity(intent)
         }
-
-        recycler.layoutManager = LinearLayoutManager(requireContext())
         recycler.adapter = adapter
 
-        bluetoothAdapter = (requireContext().getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
+        // Initialisation Bluetooth
+        val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
+        val manager = requireContext().getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        bluetoothAdapter = manager.adapter
         scanner = bluetoothAdapter.bluetoothLeScanner
 
+        // On injecte d’abord en mémoire les appareils mémorisés
         injectStoredDevices(prefs)
+        // Puis on démarre le scan périodique
         startBleScan()
     }
 
@@ -78,39 +84,29 @@ class AccessoryFragment : Fragment() {
             .filter { it.endsWith("_name") }
             .mapNotNull { key ->
                 val mac = key.removeSuffix("_name")
-                val baseName = prefs.getString(key, null) ?: return@mapNotNull null
+                val name = prefs.getString(key, null) ?: return@mapNotNull null
                 if (!BluetoothAdapter.checkBluetoothAddress(mac)) return@mapNotNull null
-                val auto      = prefs.getBoolean("${mac}_auto", false)
+                val auto = prefs.getBoolean("${mac}_auto", false)
                 val connected = prefs.getBoolean("${mac}_connected", false)
-                val battRaw   = prefs.getInt("battery_$mac", -1)
-                val battery: Int? = battRaw.takeIf { it >= 0 }
-
-                BleDevice(
-                    name      = prefs.getString("${mac}_name", baseName) ?: baseName,
-                    rssi      = -100,
-                    mac       = mac,
-                    auto      = auto,
-                    connected = connected,
-                    baseName  = baseName,
-                    battery   = battery
-                )
+                val batteryRaw = prefs.getInt("battery_${mac}", -1)
+                val battery: Int? = if (batteryRaw >= 0) batteryRaw else null
+                BleDevice(name, -100, mac, auto, connected, name, battery)
             }
 
-        scanResults.apply {
-            clear()
-            addAll(devices)
-        }
+        scanResults.clear()
+        scanResults.addAll(devices)
         adapter.notifyDataSetChanged()
     }
 
-    @SuppressLint("MissingPermission")
     private fun startBleScan() {
         if (!hasPermissions()) {
             requestPermissions()
             return
         }
+
         scanner?.startScan(scanCallback)
         log("🟢 Démarrage du scan BLE")
+
         handler.postDelayed({
             scanner?.stopScan(scanCallback)
             log("⏹️ Fin du scan BLE")
@@ -124,7 +120,9 @@ class AccessoryFragment : Fragment() {
         } else {
             arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
         }
-        return perms.all { ContextCompat.checkSelfPermission(requireContext(), it) == PackageManager.PERMISSION_GRANTED }
+        return perms.all {
+            ContextCompat.checkSelfPermission(requireContext(), it) == PackageManager.PERMISSION_GRANTED
+        }
     }
 
     private fun requestPermissions() {
@@ -138,38 +136,37 @@ class AccessoryFragment : Fragment() {
 
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
-            val dev = result.device ?: return
-            val mac = dev.address ?: return
-            val baseName = dev.name ?: return
+            val device = result.device ?: return
+            val mac = device.address ?: return
+            val baseName = device.name ?: return
             if (baseName.isBlank()) return
 
             val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
             val customName = prefs.getString("${mac}_name", baseName) ?: baseName
-            val auto       = prefs.getBoolean("${mac}_auto", false)
-            val connected  = prefs.getBoolean("${mac}_connected", false)
-            val battRaw    = prefs.getInt("battery_$mac", -1)
-            val battery: Int? = battRaw.takeIf { it >= 0 }
+            val auto = prefs.getBoolean("${mac}_auto", false)
+            val connected = prefs.getBoolean("${mac}_connected", false)
+            val battery = prefs.getInt("battery_${mac}", -1)
 
             val newDevice = BleDevice(
-                name      = customName,
-                rssi      = result.rssi,
-                mac       = mac,
-                auto      = auto,
-                connected = connected,
-                baseName  = baseName,
-                battery   = battery
+                name     = customName,
+                rssi     = result.rssi,
+                mac      = mac,
+                auto     = auto,
+                connected= connected,
+                baseName = baseName,
+                battery  = if (battery >= 0) battery else null
             )
 
-            val idx = scanResults.indexOfFirst { it.mac == mac }
-            if (idx >= 0) {
-                scanResults[idx] = newDevice
-                adapter.notifyItemChanged(idx)
+            val index = scanResults.indexOfFirst { it.mac == mac }
+            if (index >= 0) {
+                scanResults[index] = newDevice
+                adapter.notifyItemChanged(index)
             } else {
                 scanResults.add(newDevice)
-                adapter.notifyItemInserted(scanResults.lastIndex)
+                adapter.notifyItemInserted(scanResults.size - 1)
             }
 
-            log("📡 Détecté : $mac ($customName), auto=$auto, connected=$connected, batt=${battery ?: "?"}%")
+            log("📡 Détecté : $mac ($customName), auto=$auto, connected=$connected, batt=${battery}%")
         }
     }
 
