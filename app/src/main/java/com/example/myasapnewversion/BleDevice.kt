@@ -1,4 +1,3 @@
-// BleDevice.kt
 package com.example.myasapnewversion
 
 data class BleDevice(
