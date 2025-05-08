@@ -1,13 +1,9 @@
 package com.example.myasapnewversion
 
 import android.Manifest
-import android.bluetooth.BluetoothManager
-import android.bluetooth.le.BluetoothLeScanner
-import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanResult
-import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -28,9 +24,16 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
+import android.bluetooth.le.BluetoothLeScanner
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanResult
+import android.bluetooth.le.ScanSettings
 
 class AccessoryFragment : Fragment() {
 
+    private lateinit var bluetoothAdapter: BluetoothAdapter
     private var scanner: BluetoothLeScanner? = null
     private val handler = Handler(Looper.getMainLooper())
     private val scanResults = mutableListOf<BleDevice>()
@@ -39,7 +42,6 @@ class AccessoryFragment : Fragment() {
     private val SCAN_DURATION = 10_000L
     private val REQUEST_CODE_PERMISSIONS = 101
 
-    // UUID standard du service Batterie
     private val BATTERY_SERVICE_UUID =
         ParcelUuid(UUID.fromString("0000180F-0000-1000-8000-00805f9b34fb"))
 
@@ -56,61 +58,41 @@ class AccessoryFragment : Fragment() {
         val recycler = view.findViewById<RecyclerView>(R.id.recycler_devices)
         recycler.layoutManager = LinearLayoutManager(requireContext())
 
-        // Adaptateur : liste + callback
+        // Adaptateur (plus besoin du context en paramètre)
         adapter = BleDeviceAdapter(scanResults) { device ->
-            Intent(requireContext(), AccessoryDetailActivity::class.java).apply {
-                putExtra("device_mac", device.mac)
-                putExtra("device_name", device.name)
-                startActivity(this)
+            Intent(requireContext(), AccessoryDetailActivity::class.java).also { intent ->
+                intent.putExtra("device_mac", device.mac)
+                intent.putExtra("device_name", device.name)
+                startActivity(intent)
             }
         }
         recycler.adapter = adapter
 
-        // Initialisation BLE avec permission BLUETOOTH_CONNECT sur Android S+
-        val manager = requireContext()
-            .getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val perm = Manifest.permission.BLUETOOTH_CONNECT
-            if (ContextCompat.checkSelfPermission(requireContext(), perm) ==
-                PackageManager.PERMISSION_GRANTED
-            ) {
-                scanner = manager.adapter.bluetoothLeScanner
-            } else {
-                Log.w("BLE_SERVICE", "Permission BLUETOOTH_CONNECT manquante")
-                scanner = null
-            }
-        } else {
-            scanner = manager.adapter.bluetoothLeScanner
-        }
+        // Bluetooth
+        val manager = requireContext().getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        bluetoothAdapter = manager.adapter
+        scanner = bluetoothAdapter.bluetoothLeScanner
 
-        // Charge les appareils sauvegardés
+        // Appareils stockés
         val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
         injectStoredDevices(prefs)
 
-        // Lance le scan continu
+        // Scan continu
         startBleScan()
     }
 
-    private fun injectStoredDevices(prefs: android.content.SharedPreferences) {
+    private fun injectStoredDevices(prefs: SharedPreferences) {
         val devices = prefs.all.keys
             .filter { it.endsWith("_name") }
             .mapNotNull { key ->
                 val mac = key.removeSuffix("_name")
-                val rawName = prefs.getString(key, null) ?: return@mapNotNull null
-                if (!android.bluetooth.BluetoothAdapter.checkBluetoothAddress(mac)) return@mapNotNull null
+                val name = prefs.getString(key, null) ?: return@mapNotNull null
+                if (!BluetoothAdapter.checkBluetoothAddress(mac)) return@mapNotNull null
                 val auto = prefs.getBoolean("${mac}_auto", false)
                 val connected = prefs.getBoolean("${mac}_connected", false)
                 val batteryRaw = prefs.getInt("battery_$mac", -1)
                 val battery: Int? = batteryRaw.takeIf { it >= 0 }
-                BleDevice(
-                    name      = rawName,
-                    rssi      = -100,
-                    mac       = mac,
-                    auto      = auto,
-                    connected = connected,
-                    baseName  = rawName,
-                    battery   = battery
-                )
+                BleDevice(name, -100, mac, auto, connected, name, battery)
             }
         scanResults.clear()
         scanResults.addAll(devices)
@@ -129,7 +111,6 @@ class AccessoryFragment : Fragment() {
 
         scanner?.startScan(null, settings, scanCallback)
         log("🟢 Démarrage du scan BLE (LOW_LATENCY continu)")
-
         handler.postDelayed({
             scanner?.stopScan(scanCallback)
             log("⏹️ Fin du scan BLE")
@@ -144,8 +125,7 @@ class AccessoryFragment : Fragment() {
             arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
         }
         return perms.all {
-            ContextCompat.checkSelfPermission(requireContext(), it) ==
-                    PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(requireContext(), it) == PackageManager.PERMISSION_GRANTED
         }
     }
 
@@ -155,29 +135,17 @@ class AccessoryFragment : Fragment() {
         } else {
             arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
         }
-        ActivityCompat.requestPermissions(
-            requireActivity(),
-            perms,
-            REQUEST_CODE_PERMISSIONS
-        )
+        ActivityCompat.requestPermissions(requireActivity(), perms, REQUEST_CODE_PERMISSIONS)
     }
 
     private val scanCallback = object : ScanCallback() {
-        override fun onScanResult(callbackType: Int, result: ScanResult) =
-            handleResult(result)
-
-        override fun onBatchScanResults(results: List<ScanResult>) =
-            results.forEach { handleResult(it) }
+        override fun onScanResult(callbackType: Int, result: ScanResult) = handleResult(result)
+        override fun onBatchScanResults(results: List<ScanResult>) { results.forEach(::handleResult) }
 
         private fun handleResult(result: ScanResult) {
-            val mac = result.device.address
-            val raw = result.scanRecord?.deviceName ?: result.device.name
-            if (raw.isNullOrBlank()) return
-            val trimmed = raw.trim()
-            if (trimmed.equals("Inconnu", true)
-                || trimmed.length < 2
-                || trimmed.all { !it.isLetterOrDigit() }
-            ) return
+            val mac = result.device.address ?: return
+            val raw = result.scanRecord?.deviceName ?: result.device.name ?: return
+            val trimmed = raw.trim().takeIf { it.length >= 2 && it.any { it.isLetterOrDigit() } } ?: return
 
             val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
             val advBattery = result.scanRecord
@@ -193,39 +161,25 @@ class AccessoryFragment : Fragment() {
             } ?: prefs.getInt("battery_$mac", -1).takeIf { it >= 0 }
 
             val customName = prefs.getString("${mac}_name", trimmed) ?: trimmed
-            val auto       = prefs.getBoolean("${mac}_auto", false)
-            val connected  = prefs.getBoolean("${mac}_connected", false)
+            val auto      = prefs.getBoolean("${mac}_auto", false)
+            val connected = prefs.getBoolean("${mac}_connected", false)
 
-            val newDevice = BleDevice(
-                name      = customName,
-                rssi      = result.rssi,
-                mac       = mac,
-                auto      = auto,
-                connected = connected,
-                baseName  = trimmed,
-                battery   = battery
-            )
-
-            val index = scanResults.indexOfFirst { it.mac == mac }
-            if (index >= 0) {
-                scanResults[index] = newDevice
-                adapter.notifyItemChanged(index)
+            val newDevice = BleDevice(customName, result.rssi, mac, auto, connected, trimmed, battery)
+            val idx = scanResults.indexOfFirst { it.mac == mac }
+            if (idx >= 0) {
+                scanResults[idx] = newDevice
+                adapter.notifyItemChanged(idx)
             } else {
                 scanResults.add(newDevice)
                 adapter.notifyItemInserted(scanResults.lastIndex)
             }
-
             log("📡 Détecté : $mac ($customName), auto=$auto, connected=$connected, batt=${battery ?: "?"}%")
         }
     }
 
-    private fun log(msg: String) {
-        Log.d("BLE_SERVICE", "[${timestamp()}] $msg")
-    }
-
+    private fun log(msg: String) = Log.d("BLE_SERVICE", "[${timestamp()}] $msg")
     private fun timestamp(): String =
-        SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
-            .format(Date())
+        SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
 
     override fun onDestroyView() {
         super.onDestroyView()

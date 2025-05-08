@@ -25,26 +25,22 @@ class BleDeviceAdapter(
         holder.nameTv.text = dev.name
         holder.rssiTv.text = "${dev.rssi} dBm"
         holder.battTv.text = dev.battery?.let { "$it %" } ?: "? %"
-
-        // Icône auto-connect (étoile pleine/vide)
         holder.ivAuto.setImageResource(
             if (dev.auto) android.R.drawable.star_on
-            else               android.R.drawable.star_off
+            else android.R.drawable.star_off
         )
-        // Icône connexion (online/offline)
         holder.ivConn.setImageResource(
             if (dev.connected) android.R.drawable.presence_online
-            else               android.R.drawable.presence_offline
+            else android.R.drawable.presence_offline
         )
-
         holder.itemView.setOnClickListener { onClick(dev) }
     }
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val nameTv: TextView  = view.findViewById(R.id.text_name)
-        val rssiTv: TextView  = view.findViewById(R.id.text_rssi)
-        val battTv: TextView  = view.findViewById(R.id.text_battery)
-        val ivConn: ImageView = view.findViewById(R.id.iv_connected)
-        val ivAuto: ImageView = view.findViewById(R.id.iv_auto_connect)
+        val nameTv: TextView      = view.findViewById(R.id.text_name)
+        val rssiTv: TextView      = view.findViewById(R.id.text_rssi)
+        val battTv: TextView      = view.findViewById(R.id.text_battery)
+        val ivConn: ImageView     = view.findViewById(R.id.iv_connected)
+        val ivAuto: ImageView     = view.findViewById(R.id.iv_auto_connect)
     }
 }

@@ -13,10 +13,7 @@ import androidx.preference.PreferenceManager
 
 class AccessoryDetailActivity : AppCompatActivity() {
 
-    private companion object {
-        const val TAG = "DETAIL_ACTIVITY"
-    }
-
+    private val TAG = "DETAIL_ACTIVITY"
     private lateinit var prefs: SharedPreferences
     private lateinit var mac: String
     private lateinit var originalName: String
@@ -35,14 +32,14 @@ class AccessoryDetailActivity : AppCompatActivity() {
 
         prefs = PreferenceManager.getDefaultSharedPreferences(this)
 
-        val tvTitle: TextView      = findViewById(R.id.tv_device_name_title)
-        val etName: EditText       = findViewById(R.id.et_device_name)
-        val tvBattery: TextView    = findViewById(R.id.tv_battery_level)
-        val switchAuto: SwitchCompat = findViewById(R.id.switch_auto_connect)
-        val btnSave: Button        = findViewById(R.id.btn_save_device)
-        val btnForget: Button      = findViewById(R.id.btn_forget_device)
+        val tvTitle: TextView       = findViewById(R.id.tv_device_name_title)
+        val etName: EditText        = findViewById(R.id.et_device_name)
+        val tvBattery: TextView     = findViewById(R.id.tv_battery_level)
+        val switchAuto: SwitchCompat= findViewById(R.id.switch_auto_connect)
+        val btnSave: Button         = findViewById(R.id.btn_save_device)
+        val btnForget: Button       = findViewById(R.id.btn_forget_device)
 
-        // Titre avec deux paramètres : étiquette + valeur
+        // device_name_with_value attend 2 paramètres : étiquette + valeur
         tvTitle.text = getString(
             R.string.device_name_with_value,
             getString(R.string.device_name_label),
@@ -51,7 +48,7 @@ class AccessoryDetailActivity : AppCompatActivity() {
 
         val storedName  = prefs.getString("${mac}_name", null)
         val autoConnect = prefs.getBoolean("${mac}_auto", false)
-        val batteryRaw  = prefs.getInt("battery_$mac", -1)
+        val batteryRaw  = prefs.getInt("battery_${mac}", -1)
 
         etName.setText(storedName ?: originalName)
         etName.hint = getString(R.string.device_name_hint)
@@ -82,7 +79,7 @@ class AccessoryDetailActivity : AppCompatActivity() {
             prefs.edit()
                 .remove("${mac}_name")
                 .remove("${mac}_auto")
-                .remove("battery_$mac")
+                .remove("battery_${mac}")
                 .remove("${mac}_connected")
                 .apply()
             Toast.makeText(this, "Appareil oublié", Toast.LENGTH_SHORT).show()

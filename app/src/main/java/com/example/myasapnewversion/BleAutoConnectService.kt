@@ -1,6 +1,7 @@
 package com.example.myasapnewversion
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -16,7 +17,6 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
-import androidx.annotation.SuppressLint
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 
@@ -26,11 +26,11 @@ class BleAutoConnectService : Service() {
     private val handler = Handler(Looper.getMainLooper())
 
     companion object {
-        private const val CHANNEL_ID = "ble_auto_connect"
-        private const val NOTIF_ID = 1
-        private const val TAG = "BLE_SERVICE"
-        private const val SCAN_DURATION = 5_000L
-        private const val SCAN_INTERVAL = 15_000L
+        private const val CHANNEL_ID     = "ble_auto_connect"
+        private const val NOTIF_ID       = 1
+        private const val TAG            = "BLE_SERVICE"
+        private const val SCAN_DURATION  = 5_000L
+        private const val SCAN_INTERVAL  = 15_000L
     }
 
     override fun onCreate() {
@@ -39,7 +39,7 @@ class BleAutoConnectService : Service() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("MyAsap BLE Service")
             .setContentText("Recherche et connexion BLE active")
-            .setSmallIcon(R.drawable.ic_connected)
+            .setSmallIcon(android.R.drawable.presence_online)
             .build()
         startForeground(NOTIF_ID, notification)
 
@@ -91,9 +91,7 @@ class BleAutoConnectService : Service() {
         }
     }
 
-    private fun log(msg: String) {
-        Log.d(TAG, "[${timestamp()}] $msg")
-    }
+    private fun log(msg: String) = Log.d(TAG, "[${timestamp()}] $msg")
 
     private fun timestamp(): String =
         java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.getDefault())
