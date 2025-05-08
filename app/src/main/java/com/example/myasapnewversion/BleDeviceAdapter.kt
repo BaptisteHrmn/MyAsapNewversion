@@ -18,7 +18,7 @@ class BleDeviceAdapter(
         return ViewHolder(view)
     }
 
-    override fun getItemCount(): Int = devices.size
+    override fun getItemCount() = devices.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val dev = devices[position]
@@ -26,12 +26,16 @@ class BleDeviceAdapter(
         holder.rssiTv.text = "${dev.rssi} dBm"
         holder.battTv.text = dev.battery?.let { "$it %" } ?: "? %"
         holder.ivAuto.setImageResource(
-            if (dev.auto) android.R.drawable.star_on
-            else android.R.drawable.star_off
+            if (dev.auto)
+                android.R.drawable.star_on
+            else
+                android.R.drawable.star_off
         )
         holder.ivConn.setImageResource(
-            if (dev.connected) android.R.drawable.presence_online
-            else android.R.drawable.presence_offline
+            if (dev.connected)
+                android.R.drawable.presence_online
+            else
+                android.R.drawable.presence_offline
         )
         holder.itemView.setOnClickListener { onClick(dev) }
     }

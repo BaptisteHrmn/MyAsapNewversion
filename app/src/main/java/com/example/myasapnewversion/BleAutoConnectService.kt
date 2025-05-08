@@ -19,6 +19,7 @@ import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import java.util.Locale
 
 class BleAutoConnectService : Service() {
 
@@ -36,16 +37,15 @@ class BleAutoConnectService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+        val notif = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("MyAsap BLE Service")
             .setContentText("Recherche et connexion BLE active")
-            .setSmallIcon(android.R.drawable.presence_online)
+            .setSmallIcon(R.drawable.ic_connected)
             .build()
-        startForeground(NOTIF_ID, notification)
+        startForeground(NOTIF_ID, notif)
 
         val manager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         scanner = manager.adapter.bluetoothLeScanner
-
         scheduleScan()
     }
 
@@ -85,16 +85,18 @@ class BleAutoConnectService : Service() {
     }
 
     private val scanCallback = object : ScanCallback() {
-        override fun onScanResult(callbackType: Int, result: ScanResult) {
+        override fun onScanResult(cb: Int, result: ScanResult) {
             log("Résultat auto-connect: ${result.device.address} RSSI=${result.rssi}")
             // TODO : logique de connexion automatique
         }
     }
 
-    private fun log(msg: String) = Log.d(TAG, "[${timestamp()}] $msg")
+    private fun log(msg: String) {
+        Log.d(TAG, "[${timestamp()}] $msg")
+    }
 
     private fun timestamp(): String =
-        java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.getDefault())
+        java.text.SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
             .format(java.util.Date())
 
     override fun onDestroy() {
@@ -103,5 +105,5 @@ class BleAutoConnectService : Service() {
         super.onDestroy()
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onBind(intent: Intent?) = null
 }

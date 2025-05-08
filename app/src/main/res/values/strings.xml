@@ -19,4 +19,5 @@
     <string name="error_no_mac">Adresse MAC absente</string>
     <string name="error_no_bluetooth_permission">Permission Bluetooth manquante</string>
     <string name="changes_saved">Modifications enregistrées</string>
+
 </resources>
