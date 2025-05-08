@@ -1,5 +1,6 @@
 package com.example.myasapnewversion
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,7 +9,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
 class BleDeviceAdapter(
-    private val devices: List<BleDevice>,
+    private val devices: MutableList<BleDevice>,
     private val onClick: (BleDevice) -> Unit
 ) : RecyclerView.Adapter<BleDeviceAdapter.ViewHolder>() {
 
@@ -25,6 +26,8 @@ class BleDeviceAdapter(
         holder.nameTv.text = dev.name
         holder.rssiTv.text = "${dev.rssi} dBm"
         holder.battTv.text = dev.battery?.let { "$it %" } ?: "? %"
+
+        // utilisation d'icônes Android natives
         holder.ivAuto.setImageResource(
             if (dev.auto)
                 android.R.drawable.star_on
@@ -37,7 +40,11 @@ class BleDeviceAdapter(
             else
                 android.R.drawable.presence_offline
         )
-        holder.itemView.setOnClickListener { onClick(dev) }
+
+        holder.itemView.setOnClickListener {
+            Log.d("UI_ACTION", "[ITEM_CLICK] ${dev.mac} (${dev.name})")
+            onClick(dev)
+        }
     }
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {

@@ -19,12 +19,8 @@ import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import java.util.Locale
 
 class BleAutoConnectService : Service() {
-
-    private lateinit var scanner: BluetoothLeScanner
-    private val handler = Handler(Looper.getMainLooper())
 
     companion object {
         private const val CHANNEL_ID     = "ble_auto_connect"
@@ -34,30 +30,35 @@ class BleAutoConnectService : Service() {
         private const val SCAN_INTERVAL  = 15_000L
     }
 
+    private lateinit var scanner: BluetoothLeScanner
+    private val handler = Handler(Looper.getMainLooper())
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        val notif = NotificationCompat.Builder(this, CHANNEL_ID)
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("MyAsap BLE Service")
             .setContentText("Recherche et connexion BLE active")
             .setSmallIcon(R.drawable.ic_connected)
             .build()
-        startForeground(NOTIF_ID, notif)
+        startForeground(NOTIF_ID, notification)
 
         val manager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         scanner = manager.adapter.bluetoothLeScanner
+
         scheduleScan()
     }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val chan = NotificationChannel(
+            val channel = NotificationChannel(
                 CHANNEL_ID,
                 "BLE Auto-Connect",
                 NotificationManager.IMPORTANCE_LOW
             )
-            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-                .createNotificationChannel(chan)
+            getSystemService(NotificationManager::class.java)
+                .createNotificationChannel(channel)
         }
     }
 
@@ -65,11 +66,12 @@ class BleAutoConnectService : Service() {
     private fun scheduleScan() {
         handler.post(object : Runnable {
             override fun run() {
-                if (ContextCompat.checkSelfPermission(
-                        this@BleAutoConnectService,
-                        Manifest.permission.BLUETOOTH_SCAN
-                    ) == PackageManager.PERMISSION_GRANTED
-                ) {
+                val ok = ContextCompat.checkSelfPermission(
+                    this@BleAutoConnectService,
+                    Manifest.permission.BLUETOOTH_SCAN
+                ) == PackageManager.PERMISSION_GRANTED
+
+                if (ok) {
                     scanner.startScan(scanCallback)
                     log("🟢 Démarrage du scan BLE auto-connect")
                     handler.postDelayed({
@@ -79,15 +81,16 @@ class BleAutoConnectService : Service() {
                     }, SCAN_DURATION)
                 } else {
                     log("❌ Permission BLUETOOTH_SCAN manquante")
+                    handler.postDelayed(this, SCAN_INTERVAL)
                 }
             }
         })
     }
 
     private val scanCallback = object : ScanCallback() {
-        override fun onScanResult(cb: Int, result: ScanResult) {
+        override fun onScanResult(callbackType: Int, result: ScanResult) {
             log("Résultat auto-connect: ${result.device.address} RSSI=${result.rssi}")
-            // TODO : logique de connexion automatique
+            // TODO : implémenter la logique de connexion automatique
         }
     }
 
@@ -96,7 +99,7 @@ class BleAutoConnectService : Service() {
     }
 
     private fun timestamp(): String =
-        java.text.SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
+        java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.getDefault())
             .format(java.util.Date())
 
     override fun onDestroy() {
@@ -105,5 +108,5 @@ class BleAutoConnectService : Service() {
         super.onDestroy()
     }
 
-    override fun onBind(intent: Intent?) = null
+    override fun onBind(intent: Intent?): IBinder? = null
 }
