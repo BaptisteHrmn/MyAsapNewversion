@@ -32,68 +32,59 @@ class AccessoryDetailActivity : AppCompatActivity() {
 
         prefs = PreferenceManager.getDefaultSharedPreferences(this)
 
-        val tvTitle: TextView       = findViewById(R.id.tv_device_name_title)
-        val etName: EditText        = findViewById(R.id.et_device_name)
-        val tvBattery: TextView     = findViewById(R.id.tv_battery_level)
-        val switchAuto: SwitchCompat= findViewById(R.id.switch_auto_connect)
-        val btnSave: Button         = findViewById(R.id.btn_save_device)
-        val btnForget: Button       = findViewById(R.id.btn_forget_device)
+        val tvTitle: TextView = findViewById(R.id.tv_device_name_title)
+        val etName: EditText = findViewById(R.id.et_device_name)
+        val tvBattery: TextView = findViewById(R.id.tv_battery_level)
+        val switchAuto: SwitchCompat = findViewById(R.id.switch_auto_connect)
+        val etBatteryThreshold: EditText = findViewById(R.id.et_battery_threshold)
+        val btnSave: Button = findViewById(R.id.btn_save_device)
+        val btnForget: Button = findViewById(R.id.btn_forget_device)
 
-        // Titre
         tvTitle.text = getString(
             R.string.device_name_with_value,
             getString(R.string.device_name_label),
             originalName
         )
 
-        // Valeurs initiales
-        val storedName  = prefs.getString("${mac}_name", null)
+        val storedName = prefs.getString("${mac}_name", null)
         val autoConnect = prefs.getBoolean("${mac}_auto", false)
-        val battRaw     = prefs.getInt("battery_$mac", -1)
+        val battRaw = prefs.getInt("battery_$mac", -1)
+        val storedThreshold = prefs.getInt("battery_threshold_$mac", 20)
 
         etName.setText(storedName ?: originalName)
-        etName.hint = getString(R.string.device_name_hint)
-
         switchAuto.isChecked = autoConnect
-        switchAuto.text = getString(R.string.auto_connect_label)
-
         tvBattery.text = if (battRaw >= 0)
             getString(R.string.battery_level, battRaw)
         else
             getString(R.string.battery_level_unknown)
+        etBatteryThreshold.setText(storedThreshold.toString())
 
-        btnSave.text = getString(R.string.save_button)
-        // Texte du bouton Oublier/Associer selon présence en prefs
-        val isAssociated = prefs.contains("${mac}_name")
-        btnForget.text = if (isAssociated)
-            getString(R.string.forget_button)
-        else
-            getString(R.string.associate_button)
-
-        // SAVE
         btnSave.setOnClickListener {
+            val threshold = etBatteryThreshold.text.toString().toIntOrNull() ?: run {
+                Toast.makeText(this, "Veuillez entrer un seuil valide", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
             prefs.edit()
                 .putString("${mac}_name", etName.text.toString().trim())
                 .putBoolean("${mac}_auto", switchAuto.isChecked)
+                .putInt("battery_threshold_$mac", threshold)
                 .apply()
-            Log.d(TAG, "[UI_ACTION][SAVE] $mac → name='${etName.text}', auto=${switchAuto.isChecked}")
+            Log.d(TAG, "[UI_ACTION][SAVE] $mac → seuil=$threshold")
             Toast.makeText(this, "Modifications enregistrées", Toast.LENGTH_SHORT).show()
             finish()
         }
 
-        // FORGET ou ASSOCIATE
         btnForget.setOnClickListener {
-            if (isAssociated) {
+            if (prefs.contains("${mac}_name")) {
                 prefs.edit()
                     .remove("${mac}_name")
                     .remove("${mac}_auto")
                     .remove("battery_$mac")
-                    .remove("${mac}_connected")
+                    .remove("battery_threshold_$mac")
                     .apply()
                 Log.d(TAG, "[UI_ACTION][FORGET] $mac")
                 Toast.makeText(this, "Appareil oublié", Toast.LENGTH_SHORT).show()
             } else {
-                // on associe l'appareil avec nom original + auto false par défaut
                 prefs.edit()
                     .putString("${mac}_name", originalName)
                     .putBoolean("${mac}_auto", false)
