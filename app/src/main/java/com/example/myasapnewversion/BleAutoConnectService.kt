@@ -6,6 +6,8 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import android.view.LayoutInflater
+import android.view.ViewGroup
 
 class BleDeviceAdapter(
     private val devices: List<BleDevice>,

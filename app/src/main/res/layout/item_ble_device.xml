@@ -1,4 +1,3 @@
-<!-- Fichier : app/src/main/res/layout/item_ble_device.xml -->
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
