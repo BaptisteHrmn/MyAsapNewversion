@@ -4,8 +4,8 @@ data class BleDevice(
     val name: String,
     val rssi: Int,
     val mac: String,
-    val auto: Boolean,
-    val connected: Boolean,
+    val isAutoConnected: Boolean,
+    val isConnected: Boolean,
     val baseName: String,
-    val battery: Int?
+    val batteryLevel: Int? = null
 )

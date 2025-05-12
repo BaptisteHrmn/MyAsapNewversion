@@ -8,6 +8,8 @@ import org.json.JSONObject
 
 object DeviceStorage {
 
+    private const val TAG = "BLE_SERVICE"
+
     fun saveDevices(context: Context, devices: List<BleDevice>) {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val jsonArray = JSONArray()
@@ -16,17 +18,15 @@ object DeviceStorage {
             val obj = JSONObject().apply {
                 put("mac", device.mac)
                 put("name", device.name)
-                put("auto", device.auto)
-                put("connected", device.connected)
-                put("battery", device.battery ?: -1)
+                put("auto", device.isAutoConnected)
+                put("connected", device.isConnected)
+                put("battery", device.batteryLevel ?: -1)
             }
             jsonArray.put(obj)
         }
 
-        prefs.edit()
-            .putString("ble_devices", jsonArray.toString())
-            .apply()
-        Log.d("BLE_SERVICE", "[${TimeUtil.timestamp()}] 💾 Enregistré ${devices.size} appareils")
+        prefs.edit().putString("ble_devices", jsonArray.toString()).apply()
+        Log.d(TAG, "[${TimeUtil.timestamp()}] 💾 Enregistré ${devices.size} appareils")
     }
 
     fun loadDevices(context: Context): List<BleDevice> {
@@ -43,23 +43,24 @@ object DeviceStorage {
                 val name = obj.getString("name")
                 val auto = obj.optBoolean("auto", false)
                 val connected = obj.optBoolean("connected", false)
-                val battRaw = obj.optInt("battery", -1)
-                val battery: Int? = if (battRaw >= 0) battRaw else null
+                val battery = obj.optInt("battery", -1)
 
                 val device = BleDevice(
                     name = name,
-                    rssi = -100,
+                    rssi = -100, // Valeur neutre par défaut
                     mac = mac,
-                    auto = auto,
-                    connected = connected,
+                    isAutoConnected = auto,
+                    isConnected = connected,
                     baseName = name,
-                    battery = battery
+                    batteryLevel = if (battery >= 0) battery else null
                 )
+
                 list.add(device)
             }
+
             list
         } catch (e: Exception) {
-            Log.e("BLE_SERVICE", "[${TimeUtil.timestamp()}] ❌ Erreur de chargement : ${e.message}")
+            Log.e(TAG, "[${TimeUtil.timestamp()}] ❌ Erreur de chargement : ${e.message}")
             emptyList()
         }
     }
