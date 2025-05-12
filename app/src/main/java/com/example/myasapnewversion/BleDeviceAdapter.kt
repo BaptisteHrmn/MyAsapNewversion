@@ -1,3 +1,4 @@
+// Fichier : app/src/main/java/com/example/myasapnewversion/BleDeviceAdapter.kt
 package com.example.myasapnewversion
 
 import android.view.LayoutInflater
