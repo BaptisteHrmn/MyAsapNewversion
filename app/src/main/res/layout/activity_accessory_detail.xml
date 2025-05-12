@@ -1,60 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/tv_device_name_title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Nom de l'appareil"
-        android:textSize="18sp"
-        android:layout_marginBottom="8dp" />
-
-    <EditText
-        android:id="@+id/et_device_name"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Nom de l'appareil" />
+        android:orientation="vertical"
+        android:padding="16dp">
 
-    <TextView
-        android:id="@+id/tv_battery_level"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Niveau de batterie : Inconnu"
-        android:textSize="16sp"
-        android:layout_marginTop="16dp" />
+        <TextView
+            android:id="@+id/tv_device_name_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Nom de l'appareil"
+            android:textSize="18sp"
+            android:textStyle="bold" />
 
-    <Switch
-        android:id="@+id/switch_auto_connect"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Connexion automatique"
-        android:layout_marginTop="16dp" />
+        <EditText
+            android:id="@+id/et_device_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Nom de l'appareil" />
 
-    <EditText
-        android:id="@+id/et_battery_threshold"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Seuil de batterie (%)"
-        android:inputType="number"
-        android:layout_marginTop="16dp" />
+        <TextView
+            android:id="@+id/tv_battery_level"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Niveau de batterie : Inconnu" />
 
-    <Button
-        android:id="@+id/btn_save_device"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Enregistrer"
-        android:layout_marginTop="16dp" />
+        <SwitchCompat
+            android:id="@+id/switch_auto_connect"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Connexion automatique" />
 
-    <Button
-        android:id="@+id/btn_forget_device"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Oublier l'appareil"
-        android:layout_marginTop="8dp" />
+        <EditText
+            android:id="@+id/et_battery_threshold"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Seuil de batterie" />
 
-</LinearLayout>
+        <Button
+            android:id="@+id/btn_save_device"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Enregistrer" />
+
+        <Button
+            android:id="@+id/btn_forget_device"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Oublier l'appareil" />
+    </LinearLayout>
+</ScrollView>
