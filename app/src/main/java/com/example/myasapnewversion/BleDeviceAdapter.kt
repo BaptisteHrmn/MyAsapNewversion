@@ -9,15 +9,15 @@ import androidx.recyclerview.widget.RecyclerView
 
 class BleDeviceAdapter(
     private val devices: List<BleDevice>,
-    private val clickListener: (BleDevice) -> Unit
+    private val onClick: (BleDevice) -> Unit
 ) : RecyclerView.Adapter<BleDeviceAdapter.ViewHolder>() {
 
-    class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val nameText: TextView = itemView.findViewById(R.id.tv_device_name)
-        val rssiText: TextView = itemView.findViewById(R.id.tv_device_rssi)
-        val batteryText: TextView = itemView.findViewById(R.id.tv_device_battery)
-        val iconAuto: ImageView = itemView.findViewById(R.id.iv_auto_connect)
-        val iconConnected: ImageView = itemView.findViewById(R.id.iv_connected)
+    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val nameText: TextView = view.findViewById(R.id.tv_device_name)
+        val rssiText: TextView = view.findViewById(R.id.tv_device_rssi)
+        val batteryText: TextView = view.findViewById(R.id.tv_device_battery)
+        val iconConnected: ImageView = view.findViewById(R.id.iv_connected)
+        val iconAutoConnect: ImageView = view.findViewById(R.id.iv_auto_connect)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -32,9 +32,10 @@ class BleDeviceAdapter(
         val device = devices[position]
         holder.nameText.text = device.name
         holder.rssiText.text = "${device.rssi} dBm"
-        holder.batteryText.text = device.batteryLevel?.let { "$it%" } ?: "?"
-        holder.iconAuto.visibility = if (device.isAutoConnected) View.VISIBLE else View.GONE
+        holder.batteryText.text = device.batteryLevel?.let { "$it%" } ?: "N/A"
         holder.iconConnected.visibility = if (device.isConnected) View.VISIBLE else View.GONE
-        holder.itemView.setOnClickListener { clickListener(device) }
+        holder.iconAutoConnect.visibility = if (device.isAutoConnected) View.VISIBLE else View.GONE
+
+        holder.itemView.setOnClickListener { onClick(device) }
     }
 }

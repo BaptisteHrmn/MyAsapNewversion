@@ -47,7 +47,7 @@ object DeviceStorage {
 
                 val device = BleDevice(
                     name = name,
-                    rssi = -100, // Valeur neutre par défaut
+                    rssi = -100,
                     mac = mac,
                     isAutoConnected = auto,
                     isConnected = connected,
