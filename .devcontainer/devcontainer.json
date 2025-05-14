@@ -1,0 +1,21 @@
+{
+  "name": "MyAsap Android Dev",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "VARIANT": "11"
+    }
+  },
+  "settings": {
+    "terminal.integrated.shell.linux": "/bin/bash"
+  },
+  "extensions": [
+    "redhat.java",
+    "vscjava.vscode-java-pack",
+    "ms-vscode.cpptools",
+    "github.copilot-chat"
+  ],
+  "postCreateCommand": "bash /workspace/.devcontainer/setup-android-sdk.sh",
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspace"
+}
