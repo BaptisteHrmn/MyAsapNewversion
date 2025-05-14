@@ -1,17 +1,25 @@
+// .devcontainer/devcontainer.json
 {
   "name": "MyAsap Android Dev",
+
   "build": {
     "dockerfile": "Dockerfile"
   },
-  "settings": {
-    "terminal.integrated.shell.linux": "/bin/bash"
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "redhat.java",
+        "vscjava.vscode-java-pack",
+        "ms-vscode.cpptools",
+        "github.copilot-chat"
+      ],
+      "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash"
+      }
+    }
   },
-  "extensions": [
-    "redhat.java",
-    "vscjava.vscode-java-pack",
-    "ms-vscode.cpptools",
-    "github.copilot-chat"
-  ],
+
   "remoteUser": "vscode",
-  "workspaceFolder": "/workspace"
+  "workspaceFolder": "/workspaces/MyAsapNewversion"
 }
