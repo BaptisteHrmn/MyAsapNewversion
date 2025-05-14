@@ -12,7 +12,6 @@
     "ms-vscode.cpptools",
     "github.copilot-chat"
   ],
-  "postCreateCommand": "bash /workspace/.devcontainer/setup-android-sdk.sh",
   "remoteUser": "vscode",
   "workspaceFolder": "/workspace"
 }
