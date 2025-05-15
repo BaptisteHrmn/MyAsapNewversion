@@ -1,8 +1,5 @@
-# Base image Java 11 on Debian
-ARG VARIANT="11"
-FROM mcr.microsoft.com/vscode/devcontainers/java:${VARIANT}
+FROM mcr.microsoft.com/vscode/devcontainers/java:11
 
-# Installer unzip, curl, git pour le SDK Android
 RUN apt-get update && \
     apt-get install -y --no-install-recommends unzip curl git && \
     rm -rf /var/lib/apt/lists/*
@@ -16,6 +13,9 @@ COPY setup-android-sdk.sh /tmp/setup-android-sdk.sh
 RUN chmod +x /tmp/setup-android-sdk.sh && \
     /tmp/setup-android-sdk.sh && \
     rm /tmp/setup-android-sdk.sh
+
+# Assure que le répertoire SDK est accessible à l’utilisateur vscode
+RUN chown -R vscode:vscode ${ANDROID_SDK_ROOT}
 
 # Positionne le dossier de travail
 WORKDIR /workspaces/MyAsapNewversion
