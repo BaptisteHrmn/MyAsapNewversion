@@ -1,12 +1,8 @@
-// .devcontainer/devcontainer.json
 {
   "name": "MyAsap Android Dev",
-<<<<<<< HEAD
-
   "build": {
     "dockerfile": "Dockerfile"
   },
-
   "customizations": {
     "vscode": {
       "extensions": [
@@ -20,17 +16,6 @@
       }
     }
   },
-
-=======
-  "build": { "dockerfile": "Dockerfile" },
-  "settings": { "terminal.integrated.shell.linux": "/bin/bash" },
-  "extensions": [
-    "redhat.java",
-    "vscjava.vscode-java-pack",
-    "ms-vscode.cpptools",
-    "github.copilot-chat"
-  ],
->>>>>>> 3d2c15d (Fix workspaceFolder pour Codespaces)
   "remoteUser": "vscode",
   "workspaceFolder": "/workspaces/MyAsapNewversion"
 }
