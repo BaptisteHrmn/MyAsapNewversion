@@ -22,6 +22,11 @@ class AccessoryDetailActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_accessory_detail)
 
+        val address = intent.getStringExtra("address") ?: return
+        val battery = DeviceStorage.getBatteryLevel(this, address)
+        val batteryTextView = findViewById<TextView>(R.id.tv_battery_level)
+        batteryTextView.text = if (battery != -1) "Batterie : $battery%" else "Batterie : N/A"
+
         originalName = intent.getStringExtra("device_name") ?: "Inconnu"
         mac = intent.getStringExtra("device_mac") ?: run {
             Log.e(TAG, "[init] ❌ MAC manquante")

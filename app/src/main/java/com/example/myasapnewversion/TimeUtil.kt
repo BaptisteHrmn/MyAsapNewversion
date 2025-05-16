@@ -5,8 +5,9 @@ import java.util.Date
 import java.util.Locale
 
 object TimeUtil {
+    private val formatter = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
+
     fun timestamp(): String {
-        return SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
-            .format(Date())
+        return formatter.format(Date())
     }
 }

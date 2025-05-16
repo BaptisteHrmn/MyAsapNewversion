@@ -64,4 +64,13 @@ object DeviceStorage {
             emptyList()
         }
     }
+
+    fun saveBatteryLevel(context: Context, address: String, battery: Int) {
+        val prefs = context.getSharedPreferences("device_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putInt("battery_$address", battery).apply()
+    }
+
+    fun getBatteryLevel(context: Context, address: String): Int =
+        context.getSharedPreferences("device_prefs", Context.MODE_PRIVATE)
+            .getInt("battery_$address", -1)
 }

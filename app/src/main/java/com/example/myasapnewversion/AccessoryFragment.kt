@@ -6,8 +6,10 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
@@ -42,6 +44,16 @@ class AccessoryFragment : Fragment() {
 
     private val logTag = "BLE_SERVICE"
 
+    private val batteryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == "BATTERY_UPDATE") {
+                val address = intent.getStringExtra("address")
+                val battery = intent.getIntExtra("battery", -1)
+                adapter.updateBatteryLevel(address, battery)
+            }
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
@@ -67,6 +79,16 @@ class AccessoryFragment : Fragment() {
         bluetoothAdapter = manager.adapter
 
         startScanLoop()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        requireContext().registerReceiver(batteryReceiver, IntentFilter("BATTERY_UPDATE"))
+    }
+
+    override fun onStop() {
+        super.onStop()
+        requireContext().unregisterReceiver(batteryReceiver)
     }
 
     private fun startScanLoop() {
