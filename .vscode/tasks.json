@@ -1,0 +1,35 @@
+// .vscode/tasks.json
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Gradle : assembleDebug",
+      "type": "shell",
+      "command": "./gradlew clean assembleDebug",
+      "group": "build",
+      "presentation": { "reveal": "always", "clear": true }
+    },
+    {
+      "label": "Git : save & push",
+      "type": "shell",
+      "command": "git add . && git commit -m \"${input:commitMessage}\" && git push",
+      "problemMatcher": [],
+      "group": "none"
+    },
+    {
+      "label": "Gradle : assembleRelease",
+      "type": "shell",
+      "command": "./gradlew clean assembleRelease",
+      "group": "build",
+      "presentation": { "reveal": "always", "clear": true }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "commitMessage",
+      "type": "promptString",
+      "description": "Message de commit Git",
+      "default": "Mise à jour"
+    }
+  ]
+}
