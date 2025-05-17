@@ -35,8 +35,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
-            android:background="?android:attr/windowBackground"
-            app:menu="@menu/menu_bottom_navigation" />
+            app:menu="@menu/menu_bottom_navigation"
+            app:itemIconTint="@android:color/white"
+            app:itemTextColor="@android:color/white"
+            app:backgroundTint="?attr/colorPrimary" />
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
     <!-- NavigationView pour le menu hamburger -->
