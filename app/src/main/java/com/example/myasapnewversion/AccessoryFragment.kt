@@ -2,11 +2,9 @@ package com.example.myasapnewversion
 
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -20,49 +18,35 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.preference.PreferenceManager
-import java.text.SimpleDateFormat
-import java.util.*
 
 class AccessoryFragment : Fragment() {
 
+    private val logTag = "AccessoryFragment"
     private lateinit var bluetoothAdapter: BluetoothAdapter
-    private lateinit var prefs: SharedPreferences
-    private val handler = Handler(Looper.getMainLooper())
-    private val scanResults = mutableListOf<BleDevice>()
     private lateinit var adapter: BleDeviceAdapter
-
-    private val SCAN_DURATION = 10_000L
-    private val SCAN_INTERVAL = 15_000L
-    private val REQUEST_CODE_PERMISSIONS = 101
-
-    private val logTag = "BLE_SERVICE"
-
-    private val batteryReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == "BATTERY_UPDATE") {
-                val address = intent.getStringExtra("address")
-                val battery = intent.getIntExtra("battery", -1)
-                adapter.updateBatteryLevel(address, battery)
-            }
-        }
-    }
+    private val scanResults = mutableListOf<BleDevice>()
+    private val handler = Handler(Looper.getMainLooper())
+    private val SCAN_DURATION = 15000L // 15 secondes
+    private val SCAN_INTERVAL = 5000L // 5 secondes
+    private val REQUEST_CODE_PERMISSIONS = 1001
+    private lateinit var prefs: SharedPreferences
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
-    ): View {
-        return inflater.inflate(R.layout.fragment_accessory, container, false)
-    }
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        val view = inflater.inflate(R.layout.fragment_accessory, container, false)
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
         val recycler = view.findViewById<RecyclerView>(R.id.recycler_devices)
+            ?: throw IllegalStateException("Le layout fragment_accessory.xml doit contenir un RecyclerView avec l'id @+id/recycler_devices")
+
+        prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
 
         adapter = BleDeviceAdapter(scanResults) { device ->
             val intent = Intent(requireContext(), AccessoryDetailActivity::class.java)
@@ -78,16 +62,21 @@ class AccessoryFragment : Fragment() {
             requireContext().getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         bluetoothAdapter = manager.adapter
 
-        startScanLoop()
+        return view
     }
 
-    override fun onStart() {
-        super.onStart()
+    override fun onResume() {
+        super.onResume()
+        scanResults.clear()
+        adapter.notifyDataSetChanged()
+        startScanLoop()
         requireContext().registerReceiver(batteryReceiver, IntentFilter("BATTERY_UPDATE"))
     }
 
-    override fun onStop() {
-        super.onStop()
+    override fun onPause() {
+        super.onPause()
+        bluetoothAdapter.bluetoothLeScanner?.stopScan(scanCallback)
+        handler.removeCallbacksAndMessages(null)
         requireContext().unregisterReceiver(batteryReceiver)
     }
 
@@ -135,30 +124,34 @@ class AccessoryFragment : Fragment() {
 
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
-            val device = result.device ?: return
-            val mac = device.address ?: return
-            val baseName = device.name ?: return
-            if (baseName.isBlank()) return
+            val device = result.device
+            val mac = device.address
+            val rssi = result.rssi
+            val rawName = device.name ?: ""
 
-            val customName = prefs.getString("${mac}_name", baseName) ?: baseName
-            val auto = prefs.getBoolean("${mac}_auto", false)
-            val connected = prefs.getBoolean("${mac}_connected", false)
-            val battery = prefs.getInt("battery_${mac}", -1).takeIf { it >= 0 }
+            // Récupère le nom personnalisé si existant
+            val customName = prefs.getString("${mac}_name", null)
+            val isItagOrTY = rawName.contains("itag", ignoreCase = true) || rawName.contains("ty", ignoreCase = true)
+            val isRenamed = customName != null
 
-            val showThisDevice = auto || baseName.contains("iTAG", true) || baseName.contains("TY", true)
-            if (!showThisDevice) return
+            if (!isItagOrTY && !isRenamed) {
+                return
+            }
 
-            val newDevice = BleDevice(
-                name = customName,
-                rssi = result.rssi,
-                mac = mac,
-                isAutoConnected = auto,
-                isConnected = connected,
-                baseName = baseName,
-                batteryLevel = battery
-            )
+            val displayName = customName ?: if (rawName.isNotBlank()) rawName else "Appareil inconnu"
+            val autoConnect = prefs.getBoolean("${mac}_auto", false)
+            val batteryLevel = DeviceStorage.getBatteryLevel(requireContext(), mac)
 
             val index = scanResults.indexOfFirst { it.mac == mac }
+            val newDevice = BleDevice(
+                name = displayName,
+                rssi = rssi,
+                mac = mac,
+                isAutoConnected = autoConnect,
+                isConnected = false,
+                baseName = rawName,
+                batteryLevel = if (batteryLevel >= 0) batteryLevel else null
+            )
             if (index >= 0) {
                 scanResults[index] = newDevice
                 adapter.notifyItemChanged(index)
@@ -166,8 +159,13 @@ class AccessoryFragment : Fragment() {
                 scanResults.add(newDevice)
                 adapter.notifyItemInserted(scanResults.size - 1)
             }
+            log("📡 Détecté $mac ($displayName)")
+        }
+    }
 
-            log("📡 Détecté $mac ($customName), auto=$auto, conn=$connected, batt=${battery ?: "?"}%")
+    private val batteryReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            // À compléter si tu veux mettre à jour le niveau de batterie en live
         }
     }
 
@@ -176,12 +174,6 @@ class AccessoryFragment : Fragment() {
     }
 
     private fun timestamp(): String {
-        return SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date())
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        bluetoothAdapter.bluetoothLeScanner?.stopScan(scanCallback)
-        handler.removeCallbacksAndMessages(null)
+        return java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.getDefault()).format(java.util.Date())
     }
 }
