@@ -20,8 +20,14 @@ class BleAutoConnectService : Service() {
     private val binder = LocalBinder()
     private val logTag = "BleAutoConnectService"
     private val BATTERY_UUID = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb")
-    // Remplace par le vrai UUID si tu veux écouter un bouton
-    private val ACTION_UUID: UUID? = null
+
+    // UUIDs pour iTAG
+    private val ITAG_SERVICE_UUID = UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb")
+    private val ITAG_CHAR_UUID = UUID.fromString("0000ffe1-0000-1000-8000-00805f9b34fb")
+
+    // UUIDs pour TY
+    private val TY_SERVICE_UUID = UUID.fromString("0000a201-0000-1000-8000-00805f9b34fb")
+    private val TY_CHAR_UUID = UUID.fromString("0000a202-0000-1000-8000-00805f9b34fb") // À confirmer si besoin
 
     private val scanResults = HashMap<String, BleDevice>()
     private val gattMap = HashMap<String, BluetoothGatt>()
@@ -129,7 +135,16 @@ class BleAutoConnectService : Service() {
             // Fusionner toute la liste :
             val mergedList = (scanResults.values + existingDevices)
                 .groupBy { it.mac }
-                .map { it.value.first() }
+                .map { entry ->
+                    entry.value.reduce { acc, device ->
+                        BleDevice(
+                            name = if (device.name.isNotBlank() && device.name != device.mac) device.name else acc.name,
+                            mac = device.mac,
+                            batteryLevel = device.batteryLevel ?: acc.batteryLevel,
+                            isAutoConnected = device.isAutoConnected || acc.isAutoConnected
+                        )
+                    }
+                }
 
             DeviceStorage.saveDevices(applicationContext, mergedList)
             sendBroadcast(Intent("BLE_LIST_UPDATE"))
@@ -163,13 +178,6 @@ class BleAutoConnectService : Service() {
                     if (characteristic.uuid == BATTERY_UUID) {
                         gatt.readCharacteristic(characteristic)
                     }
-                    if (ACTION_UUID != null && characteristic.uuid == ACTION_UUID) {
-                        gatt.setCharacteristicNotification(characteristic, true)
-                        characteristic.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))?.let { desc ->
-                            desc.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                            gatt.writeDescriptor(desc)
-                        }
-                    }
                 }
             }
         }
@@ -182,40 +190,44 @@ class BleAutoConnectService : Service() {
                     putExtra("address", gatt.device.address)
                     putExtra("battery", batteryLevel)
                 })
+
                 // Met à jour la liste persistée
-                scanResults[gatt.device.address]?.let {
-                    scanResults[gatt.device.address] = it.copy(batteryLevel = batteryLevel)
-                    // Fusionner avec les existants pour ne rien perdre
-                    val existingDevices = DeviceStorage.loadDevices(applicationContext)
-                    val mergedList = (scanResults.values + existingDevices)
-                        .groupBy { d -> d.mac }
-                        .map { d -> d.value.first() }
-                    DeviceStorage.saveDevices(applicationContext, mergedList)
+                val mac = gatt.device.address
+                val existingDevices = DeviceStorage.loadDevices(applicationContext).toMutableList()
+                val idx = existingDevices.indexOfFirst { it.mac == mac }
+                if (idx >= 0) {
+                    val updated = existingDevices[idx].copy(batteryLevel = batteryLevel)
+                    existingDevices[idx] = updated
+                    DeviceStorage.saveDevices(applicationContext, existingDevices)
                     sendBroadcast(Intent("BLE_LIST_UPDATE"))
                 }
             }
         }
 
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
-            if (ACTION_UUID != null && characteristic.uuid == ACTION_UUID) {
-                sendBroadcast(Intent("ACTION_SIGNAL").apply {
-                    putExtra("address", gatt.device.address)
-                    putExtra("action", characteristic.value)
-                })
-            }
+            // Pas utilisé pour iTAG/TY
         }
     }
 
-    // --- Pour faire sonner un appareil ---
+    // --- Pour faire sonner un appareil iTAG ou TY ---
     fun ringDevice(mac: String) {
-        // À adapter selon la caractéristique réelle
         val gatt = gattMap[mac] ?: return
-        val actionChar = gatt.services
-            .flatMap { it.characteristics }
-            .firstOrNull { it.uuid == ACTION_UUID }
-        actionChar?.let {
-            it.value = byteArrayOf(1) // Commande à adapter
-            gatt.writeCharacteristic(it)
+        val device = scanResults[mac]
+        val name = device?.name?.lowercase() ?: ""
+
+        // iTAG
+        if (name.contains("itag")) {
+            val service = gatt.getService(ITAG_SERVICE_UUID) ?: return
+            val charac = service.getCharacteristic(ITAG_CHAR_UUID) ?: return
+            charac.value = byteArrayOf(0x01)
+            gatt.writeCharacteristic(charac)
+        }
+        // TY
+        else if (name.contains("ty")) {
+            val service = gatt.getService(TY_SERVICE_UUID) ?: return
+            val charac = service.getCharacteristic(TY_CHAR_UUID) ?: return
+            charac.value = byteArrayOf(0x01)
+            gatt.writeCharacteristic(charac)
         }
     }
 }
