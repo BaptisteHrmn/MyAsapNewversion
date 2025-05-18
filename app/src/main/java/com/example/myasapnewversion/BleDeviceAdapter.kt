@@ -7,12 +7,6 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
-data class BleDevice(
-    val name: String,
-    val mac: String,
-    val batteryLevel: Int?,
-    val isAutoConnected: Boolean
-)
 
 class BleDeviceAdapter(
     private val devices: List<BleDevice>,
