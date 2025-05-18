@@ -7,8 +7,15 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
+data class BleDevice(
+    val name: String,
+    val mac: String,
+    val batteryLevel: Int?,
+    val isAutoConnected: Boolean
+)
+
 class BleDeviceAdapter(
-    private val devices: MutableList<BleDevice>,
+    private val devices: List<BleDevice>,
     private val onClick: (BleDevice) -> Unit
 ) : RecyclerView.Adapter<BleDeviceAdapter.ViewHolder>() {
 
@@ -22,17 +29,19 @@ class BleDeviceAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val device = devices[position]
-        holder.deviceName.text = device.name.ifEmpty { "Appareil inconnu" }
-        holder.deviceAddress.text = device.mac
-        holder.deviceBattery.text = device.batteryLevel?.let { "Batterie : $it%" } ?: "Batterie : N/A"
-        // Affiche l'icône auto-connecté si besoin
+        holder.deviceName.text = device.name
+
+        // Affiche le niveau de batterie
+        holder.deviceBattery.text = device.batteryLevel?.let { "$it%" } ?: "N/A"
+
+        // Affiche l'icône si l'appareil est associé
         holder.deviceAutoConnect.visibility = if (device.isAutoConnected) View.VISIBLE else View.GONE
+
         holder.itemView.setOnClickListener { onClick(device) }
     }
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val deviceName: TextView = view.findViewById(R.id.tv_device_name)
-        val deviceAddress: TextView = view.findViewById(R.id.tv_device_mac)
         val deviceBattery: TextView = view.findViewById(R.id.tv_device_battery)
         val deviceAutoConnect: ImageView = view.findViewById(R.id.iv_auto_connect)
     }

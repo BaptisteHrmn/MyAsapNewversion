@@ -1,5 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Fichier : app/src/main/res/layout/activity_accessory_detail.xml -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -11,47 +9,70 @@
         android:padding="16dp">
 
         <TextView
-            android:id="@+id/tv_device_name_title"
+            android:id="@+id/tv_device_name"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Nom de l'appareil"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-
-        <EditText
-            android:id="@+id/et_device_name"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Nom de l'appareil" />
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
 
         <TextView
-            android:id="@+id/tv_battery_level"
+            android:id="@+id/tv_battery"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Niveau de batterie : Inconnu" />
+            android:text="Batterie : 100%"
+            android:layout_marginBottom="8dp"/>
 
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/switch_auto_connect"
+        <Button
+            android:id="@+id/btn_connect"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Connexion automatique" />
+            android:text="Connexion"
+            android:layout_marginBottom="16dp"/>
 
         <EditText
-            android:id="@+id/et_battery_threshold"
+            android:id="@+id/et_rename"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Seuil de batterie" />
+            android:hint="Renommer l'appareil"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:id="@+id/tv_notif_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Notification en cas de batterie faible"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp"/>
+
+        <EditText
+            android:id="@+id/et_battery_notif"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Pourcentage pour la notification"
+            android:inputType="number"
+            android:layout_marginBottom="16dp"/>
 
         <Button
-            android:id="@+id/btn_save_device"
-            android:layout_width="match_parent"
+            android:id="@+id/btn_save"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Enregistrer" />
+            android:text="Enregistrer"
+            android:layout_marginBottom="8dp"/>
 
         <Button
-            android:id="@+id/btn_forget_device"
-            android:layout_width="match_parent"
+            android:id="@+id/btn_forget"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Oublier l'appareil" />
+            android:text="Oublier l'appareil"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btn_ring_device"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Faire sonner l'appareil"
+            android:layout_marginBottom="8dp"/>
     </LinearLayout>
 </ScrollView>
