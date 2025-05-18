@@ -1,10 +1,10 @@
 package com.example.myasapnewversion
 
-import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.bluetooth.*
+import android.bluetooth.le.*
 import android.content.Context
 import android.content.Intent
 import android.os.Binder
@@ -13,13 +13,19 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import java.util.*
+import kotlin.collections.HashMap
 
 class BleAutoConnectService : Service() {
 
     private val binder = LocalBinder()
+    private val logTag = "BleAutoConnectService"
     private val BATTERY_UUID = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb")
-    // UUID générique pour la caractéristique d'action, à remplacer dès que tu as le bon
+    // Remplace par le vrai UUID si tu veux écouter un bouton
     private val ACTION_UUID: UUID? = null
+
+    private val scanResults = HashMap<String, BleDevice>()
+    private val gattMap = HashMap<String, BluetoothGatt>()
+    private var isScanning = false
 
     override fun onCreate() {
         super.onCreate()
@@ -27,9 +33,23 @@ class BleAutoConnectService : Service() {
         val notification = NotificationCompat.Builder(this, "ble_channel")
             .setContentTitle("Connexion Bluetooth")
             .setContentText("Recherche et connexion aux accessoires...")
-            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth) // Icône système, toujours présente
+            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
             .build()
         startForeground(1, notification)
+        startBleScan()
+    }
+
+    override fun onDestroy() {
+        stopBleScan()
+        gattMap.values.forEach { it.close() }
+        gattMap.clear()
+        super.onDestroy()
+    }
+
+    override fun onBind(intent: Intent?): IBinder = binder
+
+    inner class LocalBinder : Binder() {
+        fun getService(): BleAutoConnectService = this@BleAutoConnectService
     }
 
     private fun createNotificationChannel() {
@@ -44,31 +64,95 @@ class BleAutoConnectService : Service() {
         }
     }
 
+    // --- BLE SCAN ---
+
+    private fun startBleScan() {
+        if (isScanning) return
+        isScanning = true
+        val scanner = BluetoothAdapter.getDefaultAdapter()?.bluetoothLeScanner ?: return
+        val settings = ScanSettings.Builder()
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .build()
+        scanner.startScan(null, settings, scanCallback)
+        Log.d(logTag, "🔍 Scan BLE démarré")
+    }
+
+    private fun stopBleScan() {
+        if (!isScanning) return
+        isScanning = false
+        BluetoothAdapter.getDefaultAdapter()?.bluetoothLeScanner?.stopScan(scanCallback)
+        Log.d(logTag, "🛑 Scan BLE arrêté")
+    }
+
+    private val scanCallback = object : ScanCallback() {
+        override fun onScanResult(callbackType: Int, result: ScanResult?) {
+            result?.device?.let { device ->
+                handleDeviceFound(device)
+            }
+        }
+
+        override fun onBatchScanResults(results: MutableList<ScanResult>?) {
+            results?.forEach { result ->
+                result.device?.let { handleDeviceFound(it) }
+            }
+        }
+    }
+
+    private fun handleDeviceFound(device: BluetoothDevice) {
+        val mac = device.address
+        val originalName = device.name ?: ""
+        val associatedMacs = DeviceStorage.getAssociatedMacs(applicationContext)
+        val customName = DeviceStorage.getCustomName(applicationContext, mac)
+
+        val isItagOrTY = originalName.contains("itag", ignoreCase = true) ||
+                originalName.contains("TY", ignoreCase = true)
+        val isAssociated = associatedMacs.contains(mac)
+
+        if (isItagOrTY || isAssociated) {
+            val displayName = customName ?: originalName
+            val batteryLevel = DeviceStorage.getBatteryLevel(applicationContext, mac)
+            val autoConnected = isAssociated
+
+            val newDevice = BleDevice(
+                name = displayName,
+                mac = mac,
+                batteryLevel = batteryLevel,
+                isAutoConnected = autoConnected
+            )
+
+            scanResults[mac] = newDevice
+            DeviceStorage.saveDevices(applicationContext, scanResults.values.toList())
+            sendBroadcast(Intent("BLE_LIST_UPDATE"))
+
+            // Connexion auto si associé
+            if (isAssociated && !gattMap.containsKey(mac)) {
+                device.connectGatt(applicationContext, true, gattCallback)
+            }
+        }
+    }
+
+    // --- GATT CALLBACK ---
+
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
+            val mac = gatt.device.address
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                Log.d("BleService", "Connecté à ${gatt.device.address}")
+                Log.d(logTag, "Connecté à $mac")
+                gattMap[mac] = gatt
                 gatt.discoverServices()
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                Log.d("BleService", "Déconnecté de ${gatt.device.address}")
+                Log.d(logTag, "Déconnecté de $mac")
+                gattMap.remove(mac)
+                gatt.close()
             }
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-            Log.d("BleService", "Services découverts pour ${gatt.device.address}")
-            for (service in gatt.services) {
-                Log.d("BleService", "Service UUID: ${service.uuid}")
-                for (characteristic in service.characteristics) {
-                    Log.d("BleService", "  ↳ Caractéristique UUID: ${characteristic.uuid}")
-                }
-            }
-            // Lecture batterie si présente
             gatt.services.forEach { service ->
                 service.characteristics.forEach { characteristic ->
                     if (characteristic.uuid == BATTERY_UUID) {
                         gatt.readCharacteristic(characteristic)
                     }
-                    // Abonnement à la caractéristique d'action si connue
                     if (ACTION_UUID != null && characteristic.uuid == ACTION_UUID) {
                         gatt.setCharacteristicNotification(characteristic, true)
                         characteristic.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))?.let { desc ->
@@ -83,17 +167,21 @@ class BleAutoConnectService : Service() {
         override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
             if (characteristic.uuid == BATTERY_UUID) {
                 val batteryLevel = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0)
-                Log.d("BleService", "Niveau batterie ${gatt.device.address} : $batteryLevel%")
                 DeviceStorage.saveBatteryLevel(applicationContext, gatt.device.address, batteryLevel)
                 sendBroadcast(Intent("BATTERY_UPDATE").apply {
                     putExtra("address", gatt.device.address)
                     putExtra("battery", batteryLevel)
                 })
+                // Met à jour la liste persistée
+                scanResults[gatt.device.address]?.let {
+                    scanResults[gatt.device.address] = it.copy(batteryLevel = batteryLevel)
+                    DeviceStorage.saveDevices(applicationContext, scanResults.values.toList())
+                    sendBroadcast(Intent("BLE_LIST_UPDATE"))
+                }
             }
         }
 
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
-            Log.d("BleService", "Notification reçue : UUID=${characteristic.uuid}, valeur=${characteristic.value?.joinToString()}")
             if (ACTION_UUID != null && characteristic.uuid == ACTION_UUID) {
                 sendBroadcast(Intent("ACTION_SIGNAL").apply {
                     putExtra("address", gatt.device.address)
@@ -103,11 +191,16 @@ class BleAutoConnectService : Service() {
         }
     }
 
-    override fun onBind(intent: Intent?): IBinder = binder
-
-    inner class LocalBinder : Binder() {
-        fun getService(): BleAutoConnectService = this@BleAutoConnectService
+    // --- Pour faire sonner un appareil ---
+    fun ringDevice(mac: String) {
+        // À adapter selon la caractéristique réelle
+        val gatt = gattMap[mac] ?: return
+        val actionChar = gatt.services
+            .flatMap { it.characteristics }
+            .firstOrNull { it.uuid == ACTION_UUID }
+        actionChar?.let {
+            it.value = byteArrayOf(1) // Commande à adapter
+            gatt.writeCharacteristic(it)
+        }
     }
-
-    // Ajoute ici ta logique de scan/connexion automatique selon ton existant
 }

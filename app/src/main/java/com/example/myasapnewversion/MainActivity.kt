@@ -1,7 +1,11 @@
 package com.example.myasapnewversion
 
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.os.Bundle
+import android.os.IBinder
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
@@ -21,15 +25,28 @@ class MainActivity : AppCompatActivity() {
     private lateinit var navController: NavController
     private lateinit var appBarConfiguration: AppBarConfiguration
 
+    private var bleServiceBound = false
+    private val bleServiceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            val binder = service as? BleAutoConnectService.LocalBinder
+            binder?.getService()?.let { BleServiceLocator.setService(it) }
+            bleServiceBound = true
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            BleServiceLocator.setService(null)
+            bleServiceBound = false
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 🔁 Lancer le service de connexion BLE automatique
-        ContextCompat.startForegroundService(
-            this,
-            Intent(this, BleAutoConnectService::class.java)
-        )
+        // 🔁 Lancer et binder le service de connexion BLE automatique
+        val intent = Intent(this, BleAutoConnectService::class.java)
+        ContextCompat.startForegroundService(this, intent)
+        bindService(intent, bleServiceConnection, Context.BIND_AUTO_CREATE)
 
         val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -60,6 +77,13 @@ class MainActivity : AppCompatActivity() {
         bottomNavView.setupWithNavController(navController)
 
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration)
+    }
+
+    override fun onDestroy() {
+        if (bleServiceBound) {
+            unbindService(bleServiceConnection)
+        }
+        super.onDestroy()
     }
 
     override fun onSupportNavigateUp(): Boolean {
