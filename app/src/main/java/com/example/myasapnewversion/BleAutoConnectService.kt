@@ -218,19 +218,24 @@ class BleAutoConnectService : Service() {
         val device = scanResults[mac]
         val name = device?.name?.lowercase() ?: ""
 
-        // iTAG
-        if (name.contains("itag")) {
-            val service = gatt.getService(ITAG_SERVICE_UUID) ?: return
-            val charac = service.getCharacteristic(ITAG_CHAR_UUID) ?: return
-            charac.value = byteArrayOf(0x01)
-            gatt.writeCharacteristic(charac)
+        // iTAG : essayer d'abord Immediate Alert, puis FFE1 si dispo
+        val immediateAlertService = gatt.getService(UUID.fromString("00001802-0000-1000-8000-00805f9b34fb"))
+        val alertLevelChar = immediateAlertService?.getCharacteristic(UUID.fromString("00002a06-0000-1000-8000-00805f9b34fb"))
+        if (alertLevelChar != null) {
+            alertLevelChar.value = byteArrayOf(0x02) // 0x02 = High Alert (sonnerie)
+            gatt.writeCharacteristic(alertLevelChar)
+            return
         }
-        // TY
-        else if (name.contains("ty")) {
-            val service = gatt.getService(TY_SERVICE_UUID) ?: return
-            val charac = service.getCharacteristic(TY_CHAR_UUID) ?: return
-            charac.value = byteArrayOf(0x01)
-            gatt.writeCharacteristic(charac)
+
+        // Sinon, méthode propriétaire iTAG
+        val itagService = gatt.getService(ITAG_SERVICE_UUID)
+        val itagChar = itagService?.getCharacteristic(ITAG_CHAR_UUID)
+        if (itagChar != null) {
+            itagChar.value = byteArrayOf(0x01)
+            gatt.writeCharacteristic(itagChar)
+            return
         }
+
+        // Pour TY, à compléter après logs spécifiques TY
     }
 }
