@@ -24,11 +24,6 @@ class AccessoryFragment : Fragment() {
     private val handler = Handler(Looper.getMainLooper())
     private var isScanning = false
 
-    // Simule la récupération des noms personnalisés
-    private fun getCustomName(context: Context, mac: String): String? {
-        return DeviceStorage.getCustomName(context, mac)
-    }
-
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -85,7 +80,7 @@ class AccessoryFragment : Fragment() {
         val originalName = device.name ?: ""
         val context = requireContext()
         val associatedMacs = DeviceStorage.getAssociatedMacs(context)
-        val customName = getCustomName(context, mac)
+        val customName = DeviceStorage.getCustomName(context, mac)
 
         val isItagOrTY = originalName.contains("itag", ignoreCase = true) ||
                 originalName.contains("TY", ignoreCase = true)

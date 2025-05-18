@@ -19,7 +19,6 @@ object DeviceStorage {
                 put("mac", device.mac)
                 put("name", device.name)
                 put("auto", device.isAutoConnected)
-                put("connected", device.isConnected)
                 put("battery", device.batteryLevel ?: -1)
             }
             jsonArray.put(obj)
@@ -42,17 +41,13 @@ object DeviceStorage {
                 val mac = obj.getString("mac")
                 val name = obj.getString("name")
                 val auto = obj.optBoolean("auto", false)
-                val connected = obj.optBoolean("connected", false)
                 val battery = obj.optInt("battery", -1)
 
                 val device = BleDevice(
                     name = name,
-                    rssi = -100,
                     mac = mac,
-                    isAutoConnected = auto,
-                    isConnected = connected,
-                    baseName = name,
-                    batteryLevel = if (battery >= 0) battery else null
+                    batteryLevel = if (battery >= 0) battery else null,
+                    isAutoConnected = auto
                 )
 
                 list.add(device)
@@ -70,7 +65,46 @@ object DeviceStorage {
         prefs.edit().putInt("battery_$address", battery).apply()
     }
 
-    fun getBatteryLevel(context: Context, address: String): Int =
-        context.getSharedPreferences("device_prefs", Context.MODE_PRIVATE)
+    fun getBatteryLevel(context: Context, address: String): Int? {
+        val value = context.getSharedPreferences("device_prefs", Context.MODE_PRIVATE)
             .getInt("battery_$address", -1)
+        return if (value >= 0) value else null
+    }
+
+    // Ajoute cette fonction pour la liste des MAC associées
+    fun getAssociatedMacs(context: Context): Set<String> {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        val stored = prefs.getString("ble_devices", null) ?: return emptySet()
+        return try {
+            val jsonArray = JSONArray(stored)
+            val set = mutableSetOf<String>()
+            for (i in 0 until jsonArray.length()) {
+                val obj = jsonArray.getJSONObject(i)
+                if (obj.optBoolean("auto", false)) {
+                    set.add(obj.getString("mac"))
+                }
+            }
+            set
+        } catch (e: Exception) {
+            emptySet()
+        }
+    }
+
+    // Ajoute cette fonction pour le nom personnalisé (si tu veux l'utiliser)
+    fun getCustomName(context: Context, mac: String): String? {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+        val stored = prefs.getString("ble_devices", null) ?: return null
+        return try {
+            val jsonArray = JSONArray(stored)
+            for (i in 0 until jsonArray.length()) {
+                val obj = jsonArray.getJSONObject(i)
+                if (obj.getString("mac") == mac) {
+                    return obj.getString("name")
+                }
+            }
+            null
+        } catch (e: Exception) {
+            null
+        }
+    }
 }
