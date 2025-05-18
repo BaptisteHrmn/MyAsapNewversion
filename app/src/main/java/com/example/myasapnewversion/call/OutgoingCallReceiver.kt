@@ -7,7 +7,7 @@ import android.widget.Toast
 
 class OutgoingCallReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val number = resultData
+        val number = intent.getStringExtra(Intent.EXTRA_PHONE_NUMBER)
         Toast.makeText(
             context,
             "Appel sortant vers : $number",

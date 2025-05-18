@@ -105,9 +105,9 @@ class AccessoryDetailActivity : AppCompatActivity() {
     }
 }
 
-// Permet d'accéder au service depuis l'activité (singleton simple)
+// Singleton pour accéder au service BLE
 object BleServiceLocator {
     private var service: BleAutoConnectService? = null
-    fun setService(s: BleAutoConnectService) { service = s }
+    fun setService(s: BleAutoConnectService?) { service = s }
     fun getService(): BleAutoConnectService? = service
 }
