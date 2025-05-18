@@ -109,9 +109,13 @@ class BleAutoConnectService : Service() {
         val isAssociated = associatedMacs.contains(mac)
 
         if (isItagOrTY || isAssociated) {
-            val displayName = customName ?: originalName
+            // Charger les infos existantes
+            val existingDevices = DeviceStorage.loadDevices(applicationContext)
+            val existing = existingDevices.find { it.mac == mac }
+
+            val displayName = customName ?: existing?.name ?: originalName
             val batteryLevel = DeviceStorage.getBatteryLevel(applicationContext, mac)
-            val autoConnected = isAssociated
+            val autoConnected = existing?.isAutoConnected ?: isAssociated
 
             val newDevice = BleDevice(
                 name = displayName,
@@ -121,11 +125,17 @@ class BleAutoConnectService : Service() {
             )
 
             scanResults[mac] = newDevice
-            DeviceStorage.saveDevices(applicationContext, scanResults.values.toList())
+
+            // Fusionner toute la liste :
+            val mergedList = (scanResults.values + existingDevices)
+                .groupBy { it.mac }
+                .map { it.value.first() }
+
+            DeviceStorage.saveDevices(applicationContext, mergedList)
             sendBroadcast(Intent("BLE_LIST_UPDATE"))
 
             // Connexion auto si associé
-            if (isAssociated && !gattMap.containsKey(mac)) {
+            if (autoConnected && !gattMap.containsKey(mac)) {
                 device.connectGatt(applicationContext, true, gattCallback)
             }
         }
@@ -175,7 +185,12 @@ class BleAutoConnectService : Service() {
                 // Met à jour la liste persistée
                 scanResults[gatt.device.address]?.let {
                     scanResults[gatt.device.address] = it.copy(batteryLevel = batteryLevel)
-                    DeviceStorage.saveDevices(applicationContext, scanResults.values.toList())
+                    // Fusionner avec les existants pour ne rien perdre
+                    val existingDevices = DeviceStorage.loadDevices(applicationContext)
+                    val mergedList = (scanResults.values + existingDevices)
+                        .groupBy { d -> d.mac }
+                        .map { d -> d.value.first() }
+                    DeviceStorage.saveDevices(applicationContext, mergedList)
                     sendBroadcast(Intent("BLE_LIST_UPDATE"))
                 }
             }
