@@ -174,7 +174,10 @@ class BleAutoConnectService : Service() {
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             gatt.services.forEach { service ->
+                Log.d("BLE_UUID_DEBUG", "Service: ${service.uuid}")
                 service.characteristics.forEach { characteristic ->
+                    Log.d("BLE_UUID_DEBUG", "  Characteristic: ${characteristic.uuid}")
+                    // Batterie standard
                     if (characteristic.uuid == BATTERY_UUID) {
                         gatt.readCharacteristic(characteristic)
                     }
