@@ -151,6 +151,9 @@ class BleAutoConnectService : Service() {
 
             // Connexion auto si associé
             if (autoConnected && !gattMap.containsKey(mac)) {
+                // Ferme une ancienne connexion si elle existe
+                gattMap[mac]?.close()
+                gattMap.remove(mac)
                 device.connectGatt(applicationContext, true, gattCallback)
             }
         }
@@ -161,6 +164,7 @@ class BleAutoConnectService : Service() {
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             val mac = gatt.device.address
+            Log.d("BLE_DEBUG", "onConnectionStateChange $mac, status=$status, newState=$newState")
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 Log.d(logTag, "Connecté à $mac")
                 gattMap[mac] = gatt
@@ -170,9 +174,16 @@ class BleAutoConnectService : Service() {
                 gattMap.remove(mac)
                 gatt.close()
             }
+            // Ferme la connexion si erreur
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                Log.d(logTag, "Erreur GATT $status pour $mac, fermeture")
+                gattMap.remove(mac)
+                gatt.close()
+            }
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
+            Log.d("BLE_BATTERY_DEBUG", "onServicesDiscovered for ${gatt.device.address}, status=$status")
             var batteryRead = false
             gatt.services.forEach { service ->
                 Log.d("BLE_UUID_DEBUG", "Service: ${service.uuid}")
@@ -202,7 +213,7 @@ class BleAutoConnectService : Service() {
         }
 
         override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
-            Log.d("BLE_BATTERY_DEBUG", "onCharacteristicRead: uuid=${characteristic.uuid}, value=${characteristic.value?.joinToString()}")
+            Log.d("BLE_BATTERY_DEBUG", "onCharacteristicRead: uuid=${characteristic.uuid}, value=${characteristic.value?.joinToString()}, status=$status")
             val mac = gatt.device.address
             var batteryLevel: Int? = null
             if (characteristic.uuid == BATTERY_UUID) {
@@ -237,6 +248,7 @@ class BleAutoConnectService : Service() {
 
     // --- Pour faire sonner un appareil iTAG ou TY ---
     fun ringDevice(mac: String) {
+        Log.d("BLE_DEBUG", "ringDevice appelé pour $mac")
         val gatt = gattMap[mac] ?: return
         val device = scanResults[mac]
         val name = device?.name?.lowercase() ?: ""
@@ -271,6 +283,7 @@ class BleAutoConnectService : Service() {
 
     // --- Pour arrêter le bip d'un appareil iTAG ou TY ---
     fun stopRingDevice(mac: String) {
+        Log.d("BLE_DEBUG", "stopRingDevice appelé pour $mac")
         val gatt = gattMap[mac] ?: return
 
         // iTAG : Immediate Alert à 0x00 (Stop)
