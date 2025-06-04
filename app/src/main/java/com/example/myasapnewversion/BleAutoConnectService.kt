@@ -9,7 +9,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import java.util.*
@@ -35,6 +37,34 @@ class BleAutoConnectService : Service() {
     private val gattMap = HashMap<String, BluetoothGatt>()
     private var isScanning = false
 
+    // Ajout pour reconnexion auto
+    private val reconnectHandler = Handler(Looper.getMainLooper())
+    private val reconnectQueue = mutableMapOf<String, Runnable>()
+
+    private fun scheduleReconnect(mac: String, delayMs: Long = 3000) {
+        reconnectQueue[mac]?.let { reconnectHandler.removeCallbacks(it) }
+        val runnable = Runnable {
+            reconnectQueue.remove(mac)
+            val associatedMacs = DeviceStorage.getAssociatedMacs(applicationContext)
+            if (associatedMacs.contains(mac)) {
+                Log.d(BLE_ASSOC_TAG, "Tentative reconnexion automatique à $mac")
+                val device = BluetoothAdapter.getDefaultAdapter()?.getRemoteDevice(mac)
+                if (device != null) {
+                    gattMap[mac]?.close()
+                    gattMap.remove(mac)
+                    device.connectGatt(applicationContext, true, gattCallback)
+                }
+            }
+        }
+        reconnectQueue[mac] = runnable
+        reconnectHandler.postDelayed(runnable, delayMs)
+    }
+
+    private fun cancelReconnect(mac: String) {
+        reconnectQueue[mac]?.let { reconnectHandler.removeCallbacks(it) }
+        reconnectQueue.remove(mac)
+    }
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
@@ -51,6 +81,8 @@ class BleAutoConnectService : Service() {
         stopBleScan()
         gattMap.values.forEach { it.close() }
         gattMap.clear()
+        reconnectQueue.values.forEach { reconnectHandler.removeCallbacks(it) }
+        reconnectQueue.clear()
         super.onDestroy()
     }
 
@@ -64,7 +96,7 @@ class BleAutoConnectService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 "ble_channel",
-                "Connexion Bluetooth",
+                "Connexion BLE",
                 NotificationManager.IMPORTANCE_LOW
             )
             val manager = getSystemService(NotificationManager::class.java)
@@ -156,7 +188,6 @@ class BleAutoConnectService : Service() {
             // Connexion auto si associé
             if (autoConnected && !gattMap.containsKey(mac)) {
                 Log.d(BLE_ASSOC_TAG, "Tentative connexion auto à $mac ($displayName)")
-                // Ferme une ancienne connexion si elle existe
                 gattMap[mac]?.close()
                 gattMap.remove(mac)
                 device.connectGatt(applicationContext, true, gattCallback)
@@ -173,23 +204,30 @@ class BleAutoConnectService : Service() {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 Log.d(logTag, "Connecté à $mac")
                 gattMap[mac] = gatt
+                cancelReconnect(mac)
                 gatt.discoverServices()
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 Log.d(logTag, "Déconnecté de $mac")
                 gattMap.remove(mac)
                 gatt.close()
+                val associatedMacs = DeviceStorage.getAssociatedMacs(applicationContext)
+                if (associatedMacs.contains(mac)) {
+                    scheduleReconnect(mac)
+                }
             }
-            // Ferme la connexion si erreur
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 Log.d(logTag, "Erreur GATT $status pour $mac, fermeture")
                 gattMap.remove(mac)
                 gatt.close()
+                val associatedMacs = DeviceStorage.getAssociatedMacs(applicationContext)
+                if (associatedMacs.contains(mac)) {
+                    scheduleReconnect(mac)
+                }
             }
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             Log.d(TRACE_TAG, "onServicesDiscovered: mac=${gatt.device.address}, status=$status")
-            // --- LOG DÉTAILLÉ ---
             for (service in gatt.services) {
                 Log.i("BLE_SERVICES", "Service UUID: ${service.uuid} (${getServiceName(service.uuid)})")
                 for (char in service.characteristics) {
@@ -199,7 +237,6 @@ class BleAutoConnectService : Service() {
                     )
                 }
             }
-            // --- Abonnement notifications bouton iTAG ---
             val itagService = gatt.getService(ITAG_SERVICE_UUID)
             val itagChar = itagService?.getCharacteristic(ITAG_CHAR_UUID)
             if (itagChar != null && itagChar.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY != 0) {
@@ -211,7 +248,6 @@ class BleAutoConnectService : Service() {
                 }
                 Log.d(TRACE_TAG, "Abonnement notifications iTAG (FFE1) sur ${gatt.device.address}")
             }
-            // --- Abonnement notifications bouton TY ---
             val tyService = gatt.getService(TY_SERVICE_UUID)
             val tyChar = tyService?.getCharacteristic(TY_CHAR_UUID)
             if (tyChar != null && tyChar.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY != 0) {
@@ -223,7 +259,6 @@ class BleAutoConnectService : Service() {
                 }
                 Log.d(TRACE_TAG, "Abonnement notifications TY (A202) sur ${gatt.device.address}")
             }
-            // --- Batterie ---
             var batteryRead = false
             gatt.services.forEach { service ->
                 service.characteristics.forEach { characteristic ->
