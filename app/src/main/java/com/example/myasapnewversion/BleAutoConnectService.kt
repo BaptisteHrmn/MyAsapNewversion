@@ -286,7 +286,18 @@ class BleAutoConnectService : Service() {
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
             Log.d(TRACE_TAG, "onCharacteristicChanged: mac=${gatt.device.address}, uuid=${characteristic.uuid}, value=${characteristic.value?.joinToString()}")
             Log.i("BLE_NOTIFY", "Notification from ${characteristic.uuid} (${getCharacteristicName(characteristic.uuid)}): ${characteristic.value?.joinToString { String.format("%02X", it) }}")
-            // Ici tu pourras déclencher le SMS d'alerte si besoin
+            // Détection bouton TY
+            if (characteristic.uuid == TY_CHAR_UUID) {
+                val value = characteristic.value
+                if (value != null && value.isNotEmpty()) {
+                    Log.i("TY_EVENT", "Bouton TY pressé sur ${gatt.device.address} (valeur: ${value[0].toInt()})")
+                    sendBroadcast(Intent("TY_BUTTON_PRESSED").apply {
+                        putExtra("address", gatt.device.address)
+                        putExtra("value", value[0].toInt())
+                    })
+                }
+            }
+            // ...autres traitements éventuels...
         }
 
         override fun onDescriptorRead(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
@@ -329,6 +340,11 @@ class BleAutoConnectService : Service() {
         if (tyChar != null) {
             tyChar.value = byteArrayOf(0x01) // 0x01 ou 0x02 selon le comportement, à tester
             gatt.writeCharacteristic(tyChar)
+            // Si besoin, décommente pour tester 0x02 juste après
+            /*
+            tyChar.value = byteArrayOf(0x02)
+            gatt.writeCharacteristic(tyChar)
+            */
             return
         }
     }
