@@ -27,7 +27,7 @@ class BleAutoConnectService : Service() {
 
     // UUIDs pour TY
     private val TY_SERVICE_UUID = UUID.fromString("0000a201-0000-1000-8000-00805f9b34fb")
-    private val TY_CHAR_UUID = UUID.fromString("0000a202-0000-1000-8000-00805f9b34fb") // À confirmer si besoin
+    private val TY_CHAR_UUID = UUID.fromString("0000a202-0000-1000-8000-00805f9b34fb") // Confirmé par tes logs
 
     private val scanResults = HashMap<String, BleDevice>()
     private val gattMap = HashMap<String, BluetoothGatt>()
@@ -194,7 +194,6 @@ class BleAutoConnectService : Service() {
                             characteristic.uuid != BATTERY_UUID &&
                             characteristic.permissions and BluetoothGattCharacteristic.PERMISSION_READ != 0
                         ) {
-                            // On tente de lire toute caractéristique lisible de type UINT8
                             gatt.readCharacteristic(characteristic)
                         }
                     }
@@ -203,12 +202,12 @@ class BleAutoConnectService : Service() {
         }
 
         override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
+            Log.d("BLE_BATTERY_DEBUG", "onCharacteristicRead: uuid=${characteristic.uuid}, value=${characteristic.value?.joinToString()}")
             val mac = gatt.device.address
             var batteryLevel: Int? = null
             if (characteristic.uuid == BATTERY_UUID) {
                 batteryLevel = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0)
             } else if (characteristic.value != null && characteristic.value.size == 1) {
-                // On tente d'interpréter toute valeur UINT8 comme batterie si plausible (0-100)
                 val possible = characteristic.value[0].toInt() and 0xFF
                 if (possible in 0..100) {
                     batteryLevel = possible
@@ -220,7 +219,6 @@ class BleAutoConnectService : Service() {
                     putExtra("address", mac)
                     putExtra("battery", batteryLevel)
                 })
-                // Met à jour la liste persistée
                 val existingDevices = DeviceStorage.loadDevices(applicationContext).toMutableList()
                 val idx = existingDevices.indexOfFirst { it.mac == mac }
                 if (idx >= 0) {
@@ -261,7 +259,14 @@ class BleAutoConnectService : Service() {
             return
         }
 
-        // Pour TY, à compléter après logs spécifiques TY
+        // Pour TY
+        val tyService = gatt.getService(TY_SERVICE_UUID)
+        val tyChar = tyService?.getCharacteristic(TY_CHAR_UUID)
+        if (tyChar != null) {
+            tyChar.value = byteArrayOf(0x01) // 0x01 ou 0x02 selon le comportement, à tester
+            gatt.writeCharacteristic(tyChar)
+            return
+        }
     }
 
     // --- Pour arrêter le bip d'un appareil iTAG ou TY ---
@@ -286,6 +291,13 @@ class BleAutoConnectService : Service() {
             return
         }
 
-        // Pour TY, à compléter après logs spécifiques TY
+        // Pour TY
+        val tyService = gatt.getService(TY_SERVICE_UUID)
+        val tyChar = tyService?.getCharacteristic(TY_CHAR_UUID)
+        if (tyChar != null) {
+            tyChar.value = byteArrayOf(0x00)
+            gatt.writeCharacteristic(tyChar)
+            return
+        }
     }
 }
