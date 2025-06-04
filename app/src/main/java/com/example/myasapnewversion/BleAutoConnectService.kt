@@ -151,10 +151,14 @@ class BleAutoConnectService : Service() {
             sendBroadcast(Intent("BLE_LIST_UPDATE"))
 
             // Connexion auto si associé (même si nom vide)
+            // Correction : n'ouvre qu'une seule connexion GATT à la fois
             if (autoConnected && !gattMap.containsKey(mac)) {
+                // Ferme proprement toute ancienne connexion
                 gattMap[mac]?.close()
                 gattMap.remove(mac)
-                device.connectGatt(applicationContext, true, gattCallback)
+                // Lance la connexion et ajoute tout de suite dans gattMap pour éviter les doublons
+                val gatt = device.connectGatt(applicationContext, true, gattCallback)
+                gattMap[mac] = gatt
             }
         }
     }
