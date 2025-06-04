@@ -19,6 +19,7 @@ class BleAutoConnectService : Service() {
 
     private val binder = LocalBinder()
     private val logTag = "BleAutoConnectService"
+    private val TRACE_TAG = "BLE_TRACE"
     private val BATTERY_UUID = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb")
 
     // UUIDs pour iTAG
@@ -163,8 +164,8 @@ class BleAutoConnectService : Service() {
 
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
+            Log.d(TRACE_TAG, "onConnectionStateChange: mac=${gatt.device.address}, status=$status, newState=$newState")
             val mac = gatt.device.address
-            Log.d("BLE_DEBUG", "onConnectionStateChange $mac, status=$status, newState=$newState")
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 Log.d(logTag, "Connecté à $mac")
                 gattMap[mac] = gatt
@@ -183,12 +184,17 @@ class BleAutoConnectService : Service() {
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-            Log.d("BLE_BATTERY_DEBUG", "onServicesDiscovered for ${gatt.device.address}, status=$status")
+            Log.d(TRACE_TAG, "onServicesDiscovered: mac=${gatt.device.address}, status=$status")
+            gatt.services.forEach { service ->
+                Log.d(TRACE_TAG, "Service: ${service.uuid}")
+                service.characteristics.forEach { char ->
+                    Log.d(TRACE_TAG, "  Characteristic: ${char.uuid}, props=${char.properties}")
+                }
+            }
+            // ...code existant...
             var batteryRead = false
             gatt.services.forEach { service ->
-                Log.d("BLE_UUID_DEBUG", "Service: ${service.uuid}")
                 service.characteristics.forEach { characteristic ->
-                    Log.d("BLE_UUID_DEBUG", "  Characteristic: ${characteristic.uuid}")
                     // Batterie standard
                     if (characteristic.uuid == BATTERY_UUID) {
                         gatt.readCharacteristic(characteristic)
@@ -213,7 +219,7 @@ class BleAutoConnectService : Service() {
         }
 
         override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
-            Log.d("BLE_BATTERY_DEBUG", "onCharacteristicRead: uuid=${characteristic.uuid}, value=${characteristic.value?.joinToString()}, status=$status")
+            Log.d(TRACE_TAG, "onCharacteristicRead: mac=${gatt.device.address}, uuid=${characteristic.uuid}, value=${characteristic.value?.joinToString()}, status=$status")
             val mac = gatt.device.address
             var batteryLevel: Int? = null
             if (characteristic.uuid == BATTERY_UUID) {
@@ -241,8 +247,21 @@ class BleAutoConnectService : Service() {
             }
         }
 
+        override fun onCharacteristicWrite(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
+            Log.d(TRACE_TAG, "onCharacteristicWrite: mac=${gatt.device.address}, uuid=${characteristic.uuid}, value=${characteristic.value?.joinToString()}, status=$status")
+        }
+
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
-            // Pas utilisé pour iTAG/TY
+            Log.d(TRACE_TAG, "onCharacteristicChanged: mac=${gatt.device.address}, uuid=${characteristic.uuid}, value=${characteristic.value?.joinToString()}")
+            // ...code existant ou à compléter pour bouton...
+        }
+
+        override fun onDescriptorRead(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
+            Log.d(TRACE_TAG, "onDescriptorRead: mac=${gatt.device.address}, uuid=${descriptor.uuid}, value=${descriptor.value?.joinToString()}, status=$status")
+        }
+
+        override fun onDescriptorWrite(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
+            Log.d(TRACE_TAG, "onDescriptorWrite: mac=${gatt.device.address}, uuid=${descriptor.uuid}, value=${descriptor.value?.joinToString()}, status=$status")
         }
     }
 
