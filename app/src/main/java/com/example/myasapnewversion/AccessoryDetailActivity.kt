@@ -39,6 +39,13 @@ class AccessoryDetailActivity : AppCompatActivity() {
         tvBattery.text = "Batterie : ${device?.batteryLevel?.toString() ?: "?"}%"
         etRename.setText(device?.name ?: "")
 
+        // Charger le seuil de notification sauvegardé
+        val prefs = getSharedPreferences("battery_notif_prefs", Context.MODE_PRIVATE)
+        val savedThreshold = mac?.let { prefs.getInt(it, -1) }
+        if (savedThreshold != null && savedThreshold != -1) {
+            etBatteryNotif.setText(savedThreshold.toString())
+        }
+
         btnConnect.text = if (device?.isAutoConnected == true) "Désactiver auto-connexion" else "Associer l'appareil"
 
         btnConnect.setOnClickListener {
@@ -47,6 +54,7 @@ class AccessoryDetailActivity : AppCompatActivity() {
 
         btnSave.setOnClickListener {
             saveCustomName(etRename.text.toString())
+            saveBatteryNotifThreshold(etBatteryNotif.text.toString())
         }
 
         btnForget.setOnClickListener {
@@ -71,6 +79,19 @@ class AccessoryDetailActivity : AppCompatActivity() {
                 devices[idx] = updated
                 DeviceStorage.saveDevices(this, devices)
                 Toast.makeText(this, "Nom enregistré", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun saveBatteryNotifThreshold(thresholdStr: String) {
+        mac?.let { macAddr ->
+            val threshold = thresholdStr.toIntOrNull()
+            if (threshold != null && threshold in 1..100) {
+                val prefs = getSharedPreferences("battery_notif_prefs", Context.MODE_PRIVATE)
+                prefs.edit().putInt(macAddr, threshold).apply()
+                Toast.makeText(this, "Seuil de notification enregistré", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Valeur de seuil invalide", Toast.LENGTH_SHORT).show()
             }
         }
     }

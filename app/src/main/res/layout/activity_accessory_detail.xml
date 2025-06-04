@@ -57,7 +57,7 @@
             android:id="@+id/btn_ring_device"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Faire sonner"
+            android:text="Faire Biper l'appareil"
             android:layout_marginTop="8dp"/>
 
         <Button
