@@ -110,16 +110,16 @@ class BleAutoConnectService : Service() {
         val associatedMacs = DeviceStorage.getAssociatedMacs(applicationContext)
         val customName = DeviceStorage.getCustomName(applicationContext, mac)
 
-        val isItagOrTY = originalName.contains("itag", ignoreCase = true) ||
-                originalName.contains("TY", ignoreCase = true)
         val isAssociated = associatedMacs.contains(mac)
+        val isItagOrTY = originalName.contains("itag", ignoreCase = true) ||
+                         originalName.contains("ty", ignoreCase = true)
 
-        if (isItagOrTY || isAssociated) {
-            // Charger les infos existantes
+        // Afficher seulement si déjà associé OU si nom contient itag/ty
+        if (isAssociated || isItagOrTY) {
             val existingDevices = DeviceStorage.loadDevices(applicationContext)
             val existing = existingDevices.find { it.mac == mac }
 
-            val displayName = customName ?: existing?.name ?: originalName
+            val displayName = customName ?: existing?.name ?: if (originalName.isNotBlank()) originalName else mac
             val batteryLevel = DeviceStorage.getBatteryLevel(applicationContext, mac)
             val autoConnected = existing?.isAutoConnected ?: isAssociated
 
@@ -132,7 +132,7 @@ class BleAutoConnectService : Service() {
 
             scanResults[mac] = newDevice
 
-            // Fusionner toute la liste :
+            // Fusionner toute la liste
             val mergedList = (scanResults.values + existingDevices)
                 .groupBy { it.mac }
                 .map { entry ->
