@@ -20,6 +20,7 @@ class BleAutoConnectService : Service() {
     private val binder = LocalBinder()
     private val logTag = "BleAutoConnectService"
     private val TRACE_TAG = "BLE_TRACE"
+    private val BLE_ASSOC_TAG = "BLE_ASSOC"
     private val BATTERY_UUID = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb")
 
     // UUIDs pour iTAG
@@ -28,7 +29,7 @@ class BleAutoConnectService : Service() {
 
     // UUIDs pour TY
     private val TY_SERVICE_UUID = UUID.fromString("0000a201-0000-1000-8000-00805f9b34fb")
-    private val TY_CHAR_UUID = UUID.fromString("0000a202-0000-1000-8000-00805f9b34fb") // Confirmé par tes logs
+    private val TY_CHAR_UUID = UUID.fromString("0000a202-0000-1000-8000-00805f9b34fb")
 
     private val scanResults = HashMap<String, BleDevice>()
     private val gattMap = HashMap<String, BluetoothGatt>()
@@ -108,7 +109,6 @@ class BleAutoConnectService : Service() {
     private fun handleDeviceFound(device: BluetoothDevice) {
         val mac = device.address
         val originalName = device.name ?: ""
-        // --- LOG DEBUG : affiche tous les appareils détectés ---
         Log.d("BLE_SCAN_DEBUG", "Détecté : $mac - '$originalName'")
 
         val associatedMacs = DeviceStorage.getAssociatedMacs(applicationContext)
@@ -155,6 +155,7 @@ class BleAutoConnectService : Service() {
 
             // Connexion auto si associé
             if (autoConnected && !gattMap.containsKey(mac)) {
+                Log.d(BLE_ASSOC_TAG, "Tentative connexion auto à $mac ($displayName)")
                 // Ferme une ancienne connexion si elle existe
                 gattMap[mac]?.close()
                 gattMap.remove(mac)
@@ -249,7 +250,6 @@ class BleAutoConnectService : Service() {
 
         override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
             Log.d(TRACE_TAG, "onCharacteristicRead: mac=${gatt.device.address}, uuid=${characteristic.uuid}, value=${characteristic.value?.joinToString()}, status=$status")
-            // --- LOG VALEUR LUE ---
             Log.i("BLE_READ", "Read from ${characteristic.uuid} (${getCharacteristicName(characteristic.uuid)}): ${characteristic.value?.joinToString { String.format("%02X", it) }}")
             val mac = gatt.device.address
             var batteryLevel: Int? = null
@@ -301,7 +301,10 @@ class BleAutoConnectService : Service() {
     // --- Pour faire sonner un appareil iTAG ou TY ---
     fun ringDevice(mac: String) {
         Log.d("BLE_DEBUG", "ringDevice appelé pour $mac")
-        val gatt = gattMap[mac] ?: return
+        val gatt = gattMap[mac] ?: run {
+            Log.w("BLE_DEBUG", "Aucun GATT pour $mac")
+            return
+        }
         val device = scanResults[mac]
         val name = device?.name?.lowercase() ?: ""
 
@@ -311,6 +314,7 @@ class BleAutoConnectService : Service() {
         if (alertLevelChar != null) {
             alertLevelChar.value = byteArrayOf(0x02) // 0x02 = High Alert (sonnerie)
             gatt.writeCharacteristic(alertLevelChar)
+            Log.d("BLE_DEBUG", "Sonnerie Immediate Alert envoyée à $mac")
             return
         }
 
@@ -320,6 +324,7 @@ class BleAutoConnectService : Service() {
         if (itagChar != null) {
             itagChar.value = byteArrayOf(0x01)
             gatt.writeCharacteristic(itagChar)
+            Log.d("BLE_DEBUG", "Sonnerie iTAG envoyée à $mac")
             return
         }
 
@@ -329,14 +334,20 @@ class BleAutoConnectService : Service() {
         if (tyChar != null) {
             tyChar.value = byteArrayOf(0x01) // 0x01 ou 0x02 selon le comportement, à tester
             gatt.writeCharacteristic(tyChar)
+            Log.d("BLE_DEBUG", "Sonnerie TY envoyée à $mac")
             return
         }
+
+        Log.w("BLE_DEBUG", "Aucune méthode de sonnerie trouvée pour $mac")
     }
 
     // --- Pour arrêter le bip d'un appareil iTAG ou TY ---
     fun stopRingDevice(mac: String) {
         Log.d("BLE_DEBUG", "stopRingDevice appelé pour $mac")
-        val gatt = gattMap[mac] ?: return
+        val gatt = gattMap[mac] ?: run {
+            Log.w("BLE_DEBUG", "Aucun GATT pour $mac")
+            return
+        }
 
         // iTAG : Immediate Alert à 0x00 (Stop)
         val immediateAlertService = gatt.getService(UUID.fromString("00001802-0000-1000-8000-00805f9b34fb"))
@@ -344,6 +355,7 @@ class BleAutoConnectService : Service() {
         if (alertLevelChar != null) {
             alertLevelChar.value = byteArrayOf(0x00) // 0x00 = No Alert (arrêt)
             gatt.writeCharacteristic(alertLevelChar)
+            Log.d("BLE_DEBUG", "Arrêt sonnerie Immediate Alert envoyé à $mac")
             return
         }
 
@@ -353,6 +365,7 @@ class BleAutoConnectService : Service() {
         if (itagChar != null) {
             itagChar.value = byteArrayOf(0x00)
             gatt.writeCharacteristic(itagChar)
+            Log.d("BLE_DEBUG", "Arrêt sonnerie iTAG envoyé à $mac")
             return
         }
 
@@ -362,8 +375,11 @@ class BleAutoConnectService : Service() {
         if (tyChar != null) {
             tyChar.value = byteArrayOf(0x00)
             gatt.writeCharacteristic(tyChar)
+            Log.d("BLE_DEBUG", "Arrêt sonnerie TY envoyé à $mac")
             return
         }
+
+        Log.w("BLE_DEBUG", "Aucune méthode d'arrêt de sonnerie trouvée pour $mac")
     }
 
     // --- Utilitaires pour affichage lisible des UUID connus ---
