@@ -112,7 +112,7 @@ class BleAutoConnectService : Service() {
 
         val isAssociated = associatedMacs.contains(mac)
         val isItagOrTY = originalName.contains("itag", ignoreCase = true) ||
-                         originalName.contains("ty", ignoreCase = true)
+                originalName.contains("ty", ignoreCase = true)
 
         // Afficher seulement si déjà associé OU si nom contient itag/ty
         if (isAssociated || isItagOrTY) {
