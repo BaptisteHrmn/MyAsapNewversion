@@ -108,6 +108,9 @@ class BleAutoConnectService : Service() {
     private fun handleDeviceFound(device: BluetoothDevice) {
         val mac = device.address
         val originalName = device.name ?: ""
+        // --- LOG DEBUG : affiche tous les appareils détectés ---
+        Log.d("BLE_SCAN_DEBUG", "Détecté : $mac - '$originalName'")
+
         val associatedMacs = DeviceStorage.getAssociatedMacs(applicationContext)
         val customName = DeviceStorage.getCustomName(applicationContext, mac)
 
