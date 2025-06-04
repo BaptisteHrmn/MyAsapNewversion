@@ -28,7 +28,7 @@ class BleAutoConnectService : Service() {
 
     // UUIDs pour TY
     private val TY_SERVICE_UUID = UUID.fromString("0000a201-0000-1000-8000-00805f9b34fb")
-    private val TY_CHAR_UUID = UUID.fromString("0000a202-0000-1000-8000-00805f9b34fb") // Confirmé par tes logs
+    private val TY_CHAR_UUID = UUID.fromString("0000a202-0000-1000-8000-00805f9b34fb")
 
     private val scanResults = HashMap<String, BleDevice>()
     private val gattMap = HashMap<String, BluetoothGatt>()
@@ -108,7 +108,6 @@ class BleAutoConnectService : Service() {
     private fun handleDeviceFound(device: BluetoothDevice) {
         val mac = device.address
         val originalName = device.name ?: ""
-        // --- LOG DEBUG : affiche tous les appareils détectés ---
         Log.d("BLE_SCAN_DEBUG", "Détecté : $mac - '$originalName'")
 
         val associatedMacs = DeviceStorage.getAssociatedMacs(applicationContext)
@@ -118,7 +117,7 @@ class BleAutoConnectService : Service() {
         val isItagOrTY = originalName.contains("itag", ignoreCase = true) ||
                 originalName.contains("ty", ignoreCase = true)
 
-        // Afficher seulement si déjà associé OU si nom contient itag/ty
+        // Correction : connexion auto même si le nom est vide mais l'appareil est associé
         if (isAssociated || isItagOrTY) {
             val existingDevices = DeviceStorage.loadDevices(applicationContext)
             val existing = existingDevices.find { it.mac == mac }
@@ -153,9 +152,8 @@ class BleAutoConnectService : Service() {
             DeviceStorage.saveDevices(applicationContext, mergedList)
             sendBroadcast(Intent("BLE_LIST_UPDATE"))
 
-            // Connexion auto si associé
-            if (autoConnected && !gattMap.containsKey(mac)) {
-                // Ferme une ancienne connexion si elle existe
+            // Connexion auto si associé OU si nom contient itag/ty
+            if ((autoConnected || isItagOrTY) && !gattMap.containsKey(mac)) {
                 gattMap[mac]?.close()
                 gattMap.remove(mac)
                 device.connectGatt(applicationContext, true, gattCallback)
@@ -178,7 +176,6 @@ class BleAutoConnectService : Service() {
                 gattMap.remove(mac)
                 gatt.close()
             }
-            // Ferme la connexion si erreur
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 Log.d(logTag, "Erreur GATT $status pour $mac, fermeture")
                 gattMap.remove(mac)
@@ -188,7 +185,6 @@ class BleAutoConnectService : Service() {
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             Log.d(TRACE_TAG, "onServicesDiscovered: mac=${gatt.device.address}, status=$status")
-            // --- LOG DÉTAILLÉ ---
             for (service in gatt.services) {
                 Log.i("BLE_SERVICES", "Service UUID: ${service.uuid} (${getServiceName(service.uuid)})")
                 for (char in service.characteristics) {
@@ -198,7 +194,7 @@ class BleAutoConnectService : Service() {
                     )
                 }
             }
-            // --- Abonnement notifications bouton iTAG ---
+            // Abonnement notifications bouton iTAG
             val itagService = gatt.getService(ITAG_SERVICE_UUID)
             val itagChar = itagService?.getCharacteristic(ITAG_CHAR_UUID)
             if (itagChar != null && itagChar.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY != 0) {
@@ -210,7 +206,7 @@ class BleAutoConnectService : Service() {
                 }
                 Log.d(TRACE_TAG, "Abonnement notifications iTAG (FFE1) sur ${gatt.device.address}")
             }
-            // --- Abonnement notifications bouton TY ---
+            // Abonnement notifications bouton TY
             val tyService = gatt.getService(TY_SERVICE_UUID)
             val tyChar = tyService?.getCharacteristic(TY_CHAR_UUID)
             if (tyChar != null && tyChar.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY != 0) {
@@ -222,7 +218,7 @@ class BleAutoConnectService : Service() {
                 }
                 Log.d(TRACE_TAG, "Abonnement notifications TY (A202) sur ${gatt.device.address}")
             }
-            // --- Batterie ---
+            // Batterie
             var batteryRead = false
             gatt.services.forEach { service ->
                 service.characteristics.forEach { characteristic ->
@@ -249,7 +245,6 @@ class BleAutoConnectService : Service() {
 
         override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
             Log.d(TRACE_TAG, "onCharacteristicRead: mac=${gatt.device.address}, uuid=${characteristic.uuid}, value=${characteristic.value?.joinToString()}, status=$status")
-            // --- LOG VALEUR LUE ---
             Log.i("BLE_READ", "Read from ${characteristic.uuid} (${getCharacteristicName(characteristic.uuid)}): ${characteristic.value?.joinToString { String.format("%02X", it) }}")
             val mac = gatt.device.address
             var batteryLevel: Int? = null
@@ -286,7 +281,6 @@ class BleAutoConnectService : Service() {
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
             Log.d(TRACE_TAG, "onCharacteristicChanged: mac=${gatt.device.address}, uuid=${characteristic.uuid}, value=${characteristic.value?.joinToString()}")
             Log.i("BLE_NOTIFY", "Notification from ${characteristic.uuid} (${getCharacteristicName(characteristic.uuid)}): ${characteristic.value?.joinToString { String.format("%02X", it) }}")
-            // Détection bouton TY
             if (characteristic.uuid == TY_CHAR_UUID) {
                 val value = characteristic.value
                 if (value != null && value.isNotEmpty()) {
@@ -297,7 +291,6 @@ class BleAutoConnectService : Service() {
                     })
                 }
             }
-            // ...autres traitements éventuels...
         }
 
         override fun onDescriptorRead(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
@@ -313,14 +306,12 @@ class BleAutoConnectService : Service() {
     fun ringDevice(mac: String) {
         Log.d("BLE_DEBUG", "ringDevice appelé pour $mac")
         val gatt = gattMap[mac] ?: return
-        val device = scanResults[mac]
-        val name = device?.name?.lowercase() ?: ""
 
         // iTAG : essayer d'abord Immediate Alert, puis FFE1 si dispo
         val immediateAlertService = gatt.getService(UUID.fromString("00001802-0000-1000-8000-00805f9b34fb"))
         val alertLevelChar = immediateAlertService?.getCharacteristic(UUID.fromString("00002a06-0000-1000-8000-00805f9b34fb"))
         if (alertLevelChar != null) {
-            alertLevelChar.value = byteArrayOf(0x02) // 0x02 = High Alert (sonnerie)
+            alertLevelChar.value = byteArrayOf(0x02)
             gatt.writeCharacteristic(alertLevelChar)
             return
         }
@@ -338,13 +329,11 @@ class BleAutoConnectService : Service() {
         val tyService = gatt.getService(TY_SERVICE_UUID)
         val tyChar = tyService?.getCharacteristic(TY_CHAR_UUID)
         if (tyChar != null) {
-            tyChar.value = byteArrayOf(0x01) // 0x01 ou 0x02 selon le comportement, à tester
+            tyChar.value = byteArrayOf(0x01)
             gatt.writeCharacteristic(tyChar)
-            // Si besoin, décommente pour tester 0x02 juste après
-            /*
-            tyChar.value = byteArrayOf(0x02)
-            gatt.writeCharacteristic(tyChar)
-            */
+            // Pour certains TY, il faut tester 0x02 si 0x01 ne fonctionne pas
+            // tyChar.value = byteArrayOf(0x02)
+            // gatt.writeCharacteristic(tyChar)
             return
         }
     }
@@ -358,7 +347,7 @@ class BleAutoConnectService : Service() {
         val immediateAlertService = gatt.getService(UUID.fromString("00001802-0000-1000-8000-00805f9b34fb"))
         val alertLevelChar = immediateAlertService?.getCharacteristic(UUID.fromString("00002a06-0000-1000-8000-00805f9b34fb"))
         if (alertLevelChar != null) {
-            alertLevelChar.value = byteArrayOf(0x00) // 0x00 = No Alert (arrêt)
+            alertLevelChar.value = byteArrayOf(0x00)
             gatt.writeCharacteristic(alertLevelChar)
             return
         }
@@ -382,7 +371,6 @@ class BleAutoConnectService : Service() {
         }
     }
 
-    // --- Utilitaires pour affichage lisible des UUID connus ---
     private fun getServiceName(uuid: UUID): String = when (uuid.toString().lowercase()) {
         "0000180f-0000-1000-8000-00805f9b34fb" -> "Battery Service"
         "00001802-0000-1000-8000-00805f9b34fb" -> "Immediate Alert"
