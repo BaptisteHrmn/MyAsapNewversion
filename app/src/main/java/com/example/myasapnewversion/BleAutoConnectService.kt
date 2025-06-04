@@ -191,18 +191,40 @@ class BleAutoConnectService : Service() {
                     Log.d(TRACE_TAG, "  Characteristic: ${char.uuid}, props=${char.properties}")
                 }
             }
-            // ...code existant...
+            // --- Abonnement notifications bouton iTAG ---
+            val itagService = gatt.getService(ITAG_SERVICE_UUID)
+            val itagChar = itagService?.getCharacteristic(ITAG_CHAR_UUID)
+            if (itagChar != null && itagChar.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY != 0) {
+                gatt.setCharacteristicNotification(itagChar, true)
+                val descriptor = itagChar.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))
+                descriptor?.let {
+                    it.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                    gatt.writeDescriptor(it)
+                }
+                Log.d(TRACE_TAG, "Abonnement notifications iTAG (FFE1) sur ${gatt.device.address}")
+            }
+            // --- Abonnement notifications bouton TY ---
+            val tyService = gatt.getService(TY_SERVICE_UUID)
+            val tyChar = tyService?.getCharacteristic(TY_CHAR_UUID)
+            if (tyChar != null && tyChar.properties and BluetoothGattCharacteristic.PROPERTY_NOTIFY != 0) {
+                gatt.setCharacteristicNotification(tyChar, true)
+                val descriptor = tyChar.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))
+                descriptor?.let {
+                    it.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                    gatt.writeDescriptor(it)
+                }
+                Log.d(TRACE_TAG, "Abonnement notifications TY (A202) sur ${gatt.device.address}")
+            }
+            // --- Batterie ---
             var batteryRead = false
             gatt.services.forEach { service ->
                 service.characteristics.forEach { characteristic ->
-                    // Batterie standard
                     if (characteristic.uuid == BATTERY_UUID) {
                         gatt.readCharacteristic(characteristic)
                         batteryRead = true
                     }
                 }
             }
-            // Si aucune caractéristique batterie standard trouvée, tenter de lire toute caractéristique UINT8
             if (!batteryRead) {
                 gatt.services.forEach { service ->
                     service.characteristics.forEach { characteristic ->
@@ -253,7 +275,7 @@ class BleAutoConnectService : Service() {
 
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
             Log.d(TRACE_TAG, "onCharacteristicChanged: mac=${gatt.device.address}, uuid=${characteristic.uuid}, value=${characteristic.value?.joinToString()}")
-            // ...code existant ou à compléter pour bouton...
+            // Ici tu pourras déclencher le SMS d'alerte si besoin
         }
 
         override fun onDescriptorRead(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
