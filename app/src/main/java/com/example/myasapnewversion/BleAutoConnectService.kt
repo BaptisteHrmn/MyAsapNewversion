@@ -188,10 +188,14 @@ class BleAutoConnectService : Service() {
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             Log.d(TRACE_TAG, "onServicesDiscovered: mac=${gatt.device.address}, status=$status")
-            gatt.services.forEach { service ->
-                Log.d(TRACE_TAG, "Service: ${service.uuid}")
-                service.characteristics.forEach { char ->
-                    Log.d(TRACE_TAG, "  Characteristic: ${char.uuid}, props=${char.properties}")
+            // --- LOG DÉTAILLÉ ---
+            for (service in gatt.services) {
+                Log.i("BLE_SERVICES", "Service UUID: ${service.uuid} (${getServiceName(service.uuid)})")
+                for (char in service.characteristics) {
+                    Log.i(
+                        "BLE_SERVICES",
+                        "  └─ Char UUID: ${char.uuid} (${getCharacteristicName(char.uuid)}) | props: 0x${char.properties.toString(16)} | perms: 0x${char.permissions.toString(16)}"
+                    )
                 }
             }
             // --- Abonnement notifications bouton iTAG ---
@@ -245,6 +249,8 @@ class BleAutoConnectService : Service() {
 
         override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
             Log.d(TRACE_TAG, "onCharacteristicRead: mac=${gatt.device.address}, uuid=${characteristic.uuid}, value=${characteristic.value?.joinToString()}, status=$status")
+            // --- LOG VALEUR LUE ---
+            Log.i("BLE_READ", "Read from ${characteristic.uuid} (${getCharacteristicName(characteristic.uuid)}): ${characteristic.value?.joinToString { String.format("%02X", it) }}")
             val mac = gatt.device.address
             var batteryLevel: Int? = null
             if (characteristic.uuid == BATTERY_UUID) {
@@ -274,10 +280,12 @@ class BleAutoConnectService : Service() {
 
         override fun onCharacteristicWrite(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
             Log.d(TRACE_TAG, "onCharacteristicWrite: mac=${gatt.device.address}, uuid=${characteristic.uuid}, value=${characteristic.value?.joinToString()}, status=$status")
+            Log.i("BLE_WRITE", "Write to ${characteristic.uuid} (${getCharacteristicName(characteristic.uuid)}): ${characteristic.value?.joinToString { String.format("%02X", it) }}")
         }
 
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
             Log.d(TRACE_TAG, "onCharacteristicChanged: mac=${gatt.device.address}, uuid=${characteristic.uuid}, value=${characteristic.value?.joinToString()}")
+            Log.i("BLE_NOTIFY", "Notification from ${characteristic.uuid} (${getCharacteristicName(characteristic.uuid)}): ${characteristic.value?.joinToString { String.format("%02X", it) }}")
             // Ici tu pourras déclencher le SMS d'alerte si besoin
         }
 
@@ -356,5 +364,22 @@ class BleAutoConnectService : Service() {
             gatt.writeCharacteristic(tyChar)
             return
         }
+    }
+
+    // --- Utilitaires pour affichage lisible des UUID connus ---
+    private fun getServiceName(uuid: UUID): String = when (uuid.toString().lowercase()) {
+        "0000180f-0000-1000-8000-00805f9b34fb" -> "Battery Service"
+        "00001802-0000-1000-8000-00805f9b34fb" -> "Immediate Alert"
+        "0000ffe0-0000-1000-8000-00805f9b34fb" -> "iTAG Service"
+        "0000a201-0000-1000-8000-00805f9b34fb" -> "TY Service"
+        else -> "Unknown"
+    }
+
+    private fun getCharacteristicName(uuid: UUID): String = when (uuid.toString().lowercase()) {
+        "00002a19-0000-1000-8000-00805f9b34fb" -> "Battery Level"
+        "00002a06-0000-1000-8000-00805f9b34fb" -> "Alert Level"
+        "0000ffe1-0000-1000-8000-00805f9b34fb" -> "iTAG Notify/Write"
+        "0000a202-0000-1000-8000-00805f9b34fb" -> "TY Notify/Write"
+        else -> "Unknown"
     }
 }
