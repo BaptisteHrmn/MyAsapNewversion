@@ -30,6 +30,7 @@ class AccessoryDetailActivity : AppCompatActivity() {
         val btnSave: Button = findViewById(R.id.btn_save)
         val btnForget: Button = findViewById(R.id.btn_forget)
         val btnRing: Button = findViewById(R.id.btn_ring_device)
+        val btnStopRing: Button = findViewById(R.id.btn_stop_ring)
         val tvNotifLabel: TextView = findViewById(R.id.tv_notif_label)
 
         tvNotifLabel.text = "Notification en cas de batterie faible"
@@ -54,6 +55,10 @@ class AccessoryDetailActivity : AppCompatActivity() {
 
         btnRing.setOnClickListener {
             ringDevice()
+        }
+
+        btnStopRing.setOnClickListener {
+            stopRingDevice()
         }
     }
 
@@ -98,6 +103,18 @@ class AccessoryDetailActivity : AppCompatActivity() {
             if (service != null) {
                 service.ringDevice(macAddr)
                 Toast.makeText(this, "Commande envoyée pour faire sonner l'appareil", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Service BLE non disponible", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun stopRingDevice() {
+        mac?.let { macAddr ->
+            val service = BleServiceLocator.getService()
+            if (service != null) {
+                service.stopRingDevice(macAddr)
+                Toast.makeText(this, "Commande envoyée pour arrêter le bip", Toast.LENGTH_SHORT).show()
             } else {
                 Toast.makeText(this, "Service BLE non disponible", Toast.LENGTH_SHORT).show()
             }

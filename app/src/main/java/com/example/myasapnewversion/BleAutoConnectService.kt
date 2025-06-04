@@ -173,6 +173,7 @@ class BleAutoConnectService : Service() {
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
+            var batteryRead = false
             gatt.services.forEach { service ->
                 Log.d("BLE_UUID_DEBUG", "Service: ${service.uuid}")
                 service.characteristics.forEach { characteristic ->
@@ -180,22 +181,46 @@ class BleAutoConnectService : Service() {
                     // Batterie standard
                     if (characteristic.uuid == BATTERY_UUID) {
                         gatt.readCharacteristic(characteristic)
+                        batteryRead = true
+                    }
+                }
+            }
+            // Si aucune caractéristique batterie standard trouvée, tenter de lire toute caractéristique UINT8
+            if (!batteryRead) {
+                gatt.services.forEach { service ->
+                    service.characteristics.forEach { characteristic ->
+                        if (characteristic.properties and BluetoothGattCharacteristic.PROPERTY_READ != 0 &&
+                            characteristic.value == null &&
+                            characteristic.uuid != BATTERY_UUID &&
+                            characteristic.permissions and BluetoothGattCharacteristic.PERMISSION_READ != 0
+                        ) {
+                            // On tente de lire toute caractéristique lisible de type UINT8
+                            gatt.readCharacteristic(characteristic)
+                        }
                     }
                 }
             }
         }
 
         override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
+            val mac = gatt.device.address
+            var batteryLevel: Int? = null
             if (characteristic.uuid == BATTERY_UUID) {
-                val batteryLevel = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0)
-                DeviceStorage.saveBatteryLevel(applicationContext, gatt.device.address, batteryLevel)
+                batteryLevel = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0)
+            } else if (characteristic.value != null && characteristic.value.size == 1) {
+                // On tente d'interpréter toute valeur UINT8 comme batterie si plausible (0-100)
+                val possible = characteristic.value[0].toInt() and 0xFF
+                if (possible in 0..100) {
+                    batteryLevel = possible
+                }
+            }
+            if (batteryLevel != null) {
+                DeviceStorage.saveBatteryLevel(applicationContext, mac, batteryLevel)
                 sendBroadcast(Intent("BATTERY_UPDATE").apply {
-                    putExtra("address", gatt.device.address)
+                    putExtra("address", mac)
                     putExtra("battery", batteryLevel)
                 })
-
                 // Met à jour la liste persistée
-                val mac = gatt.device.address
                 val existingDevices = DeviceStorage.loadDevices(applicationContext).toMutableList()
                 val idx = existingDevices.indexOfFirst { it.mac == mac }
                 if (idx >= 0) {
@@ -232,6 +257,31 @@ class BleAutoConnectService : Service() {
         val itagChar = itagService?.getCharacteristic(ITAG_CHAR_UUID)
         if (itagChar != null) {
             itagChar.value = byteArrayOf(0x01)
+            gatt.writeCharacteristic(itagChar)
+            return
+        }
+
+        // Pour TY, à compléter après logs spécifiques TY
+    }
+
+    // --- Pour arrêter le bip d'un appareil iTAG ou TY ---
+    fun stopRingDevice(mac: String) {
+        val gatt = gattMap[mac] ?: return
+
+        // iTAG : Immediate Alert à 0x00 (Stop)
+        val immediateAlertService = gatt.getService(UUID.fromString("00001802-0000-1000-8000-00805f9b34fb"))
+        val alertLevelChar = immediateAlertService?.getCharacteristic(UUID.fromString("00002a06-0000-1000-8000-00805f9b34fb"))
+        if (alertLevelChar != null) {
+            alertLevelChar.value = byteArrayOf(0x00) // 0x00 = No Alert (arrêt)
+            gatt.writeCharacteristic(alertLevelChar)
+            return
+        }
+
+        // Sinon, méthode propriétaire iTAG
+        val itagService = gatt.getService(ITAG_SERVICE_UUID)
+        val itagChar = itagService?.getCharacteristic(ITAG_CHAR_UUID)
+        if (itagChar != null) {
+            itagChar.value = byteArrayOf(0x00)
             gatt.writeCharacteristic(itagChar)
             return
         }
